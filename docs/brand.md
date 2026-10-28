@@ -53,8 +53,8 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 
 ## Background and glass
 
-- **Coloured gas under marble.** Six soft colour clouds (violet, blue, green, orange, pink, aqua) drift along the edges of the screen under a white marble texture. The cloud shape is one pre-blurred image (`assets/gas.webp`, from `tools/generate_gas.py`), tinted in CSS. The marble is `assets/marble.webp`, from `tools/generate_marble.py`.
-- **Glass.** The app window is `rgba(250, 249, 246, 0.74)`, slightly see-through, so the colour moves behind it. Cards are `rgba(255, 255, 255, 0.86)` with a faint border. There is no live blur, which keeps it fast.
+- **Liquid.** A WebGL shader (`js/background.js`) draws dark, dense, slowly flowing liquid. It feeds noise back into itself ("domain warping") to make the swirls. The colours are the evidence spectrum (violet, blue, green, orange, pink) glowing out of near-black, with a soft light that drifts underneath. `assets/liquid.webp` is a still frame, used when WebGL isn't available.
+- **Glass.** The app window is `rgba(248, 247, 243, 0.9)`, so a faint tint of the liquid shows through. Cards are `rgba(255, 255, 255, 0.92)` with a faint border. There is no live blur, which keeps it fast.
 - **Motion rules.** It can be paused, stops for reduced-motion users, and is skipped on phones.
 
 ## Voice

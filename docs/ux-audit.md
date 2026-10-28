@@ -59,9 +59,9 @@ The aim was fewer things to read and decide on each screen, and more that can be
 | The sidebar footer was wordy and spilled out of the window on 1280×720 and 1366×768 screens | **Fixed:** the mode card is two short lines, the tools sit in one row, the sidebar scrolls if a screen is very short, and on short screens the help text hides. Checked at 9 screen sizes. |
 | Observations on a session page needed counting | A **sentiment bar** shows the negative / neutral / positive mix at a glance. |
 
-**Glass and motion vs. readability:** the window is slightly see-through, so the moving colour shows behind it. Quiet text was darkened, and its contrast was measured on real screenshots taken while the colour moved: the worst moment is 5.19:1, above the 4.5:1 AA minimum. The background stops for reduced-motion users, can be paused, and is skipped on phones, where the app fills the screen anyway.
+**Glass and motion vs. readability:** the window is 90% opaque over the dark liquid, so only a faint tint shows through. Quiet text contrast was measured on real screenshots taken while the liquid moved: the worst moment is 5.10:1, above the 4.5:1 AA minimum. The background stops for reduced-motion users, can be paused, and is skipped on phones, where the app fills the screen anyway.
 
-**Performance:** the moving clouds are pre-blurred images that are only moved, never blurred live, which is the cheapest way to animate them. The window uses no live blur. In the build environment, which has no graphics card, the page ran at about 9 frames per second with motion on and 54 when paused. Real devices with a GPU should be much smoother, but this wasn't measured. Dialogs no longer fade in, so they stay visible even if a slow device drops frames.
+**Performance:** the liquid is a WebGL shader drawn at 40% resolution and at most 30 frames a second, and it stops completely when paused or when the tab is hidden. In the build environment, which has no graphics card, it ran at about 4 frames per second (60 when paused). Real devices with a GPU should be smooth, but this wasn't measured. Dialogs don't fade in, so they stay visible even if a slow device drops frames.
 
 ## What was checked, and how
 

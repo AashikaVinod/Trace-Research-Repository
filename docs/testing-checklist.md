@@ -5,7 +5,11 @@
 - 🟡 **Verified locally**: passed against a local replica of Supabase, not the real service.
 - ⬜ **Unverified**: must be checked on the real Supabase project and Vercel deployment.
 
-## How the local replica worked
+## Note on the Supabase replica (earlier versions)
+
+Earlier versions connected to Supabase and were also tested against a local replica (PostgreSQL + PostgREST). The app is now sample-only, so that suite was removed; the SQL files are still tested directly.
+
+## How the local replica worked (earlier versions)
 
 The build environment could not reach `supabase.co` or `vercel.com`. Supabase mode was tested against a replica built from:
 
@@ -20,10 +24,10 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | Suite | Result |
 | --- | --- |
 | SQL integrity, security and view tests (`tests/run-sql-tests.sh`) | 33/33 passed |
-| Every user flow, sample mode (`tests/e2e.mjs`) | 26/26 passed |
-| Every user flow, Supabase replica, including sign-in (wrong password, then editor) | 27/27 passed. The test's project and decision rows were confirmed in PostgreSQL. |
+| Every user flow (`tests/e2e.mjs`) | 25/25 passed |
 | Layout at 9 screen sizes (320×640 up to 1920×1080), all 11 pages | No sideways scrolling, and the sidebar never spills out of the window |
-| Text contrast on the moving glass (sampled from screenshots over 15 seconds) | Worst 5.19:1 (AA needs 4.5) |
+| Text contrast on the glass over the moving liquid (sampled from screenshots) | Worst 5.10:1 (AA needs 4.5) |
+| Liquid background (WebGL on), all 11 pages | No errors |
 | Colour contrast of all 17 palette text pairs | All pass WCAG AA |
 | Reduced motion, keyboard focus, skip link, assistant focus handling | Pass |
 

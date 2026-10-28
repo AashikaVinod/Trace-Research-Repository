@@ -36,31 +36,13 @@ code, pre { font-family: var(--mono); }
 @keyframes breathe { 50% { opacity: 0.4; transform: scale(0.94); } }
 kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--white); font: 600 12px var(--font); color: var(--ink-2); }
 
-/* ---------- 2 Animated background: coloured gas under marble ----------
-   Six soft colour clouds drift and turn, like coloured gas. The cloud
-   shape is a pre-blurred image (assets/gas.webp), so the browser only
-   has to move it, not blur it. The marble veins sit on top. It pauses with the sidebar button (body.still) and stops
-   for people who ask their system for reduced motion. */
-.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #fbf9f6; }
-.gas { position: absolute; width: 70vmax; height: 70vmax; opacity: 0.95; will-change: transform;
-  /* the colour comes from background-color, shaped by the soft cloud image */
-  -webkit-mask: url('../assets/gas.webp') center / contain no-repeat; mask: url('../assets/gas.webp') center / contain no-repeat; }
-/* Each cloud is centred on an edge or corner, so the colour shows in the frame. */
-.gas-1 { top: -35vmax; left: -35vmax; background: #9a88ff; animation: flow-1 24s ease-in-out infinite; }
-.gas-2 { top: -35vmax; right: -35vmax; background: #5fb0ff; animation: flow-2 28s ease-in-out infinite; }
-.gas-3 { bottom: -35vmax; left: -30vmax; background: #5fd8a6; animation: flow-3 22s ease-in-out infinite; }
-.gas-4 { bottom: -35vmax; right: -35vmax; background: #ffa06b; animation: flow-4 26s ease-in-out infinite; }
-.gas-5 { top: calc(50% - 27vmax); left: -30vmax; width: 54vmax; height: 54vmax; background: #ff8cc4; opacity: 0.8; animation: flow-5 20s ease-in-out infinite; }
-.gas-6 { top: calc(50% - 24vmax); right: -26vmax; width: 48vmax; height: 48vmax; background: #6fdde2; opacity: 0.8; animation: flow-6 30s ease-in-out infinite; }
-.marble { position: absolute; inset: -5%; background: url('../assets/marble.webp') center / cover; mix-blend-mode: multiply; opacity: 0.45; animation: marble-pan 60s ease-in-out infinite alternate; }
-@keyframes flow-1 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 33% { transform: translate(40vw, 4vh) rotate(60deg) scale(1.15); } 66% { transform: translate(8vw, 30vh) rotate(-30deg) scale(0.95); } }
-@keyframes flow-2 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 33% { transform: translate(-6vw, 45vh) rotate(-60deg) scale(0.9); } 66% { transform: translate(-40vw, 6vh) rotate(40deg) scale(1.2); } }
-@keyframes flow-3 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 33% { transform: translate(45vw, 2vh) rotate(70deg) scale(1.2); } 66% { transform: translate(6vw, -40vh) rotate(-20deg) scale(0.95); } }
-@keyframes flow-4 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 33% { transform: translate(-4vw, -45vh) rotate(-50deg) scale(1.2); } 66% { transform: translate(-45vw, -2vh) rotate(30deg) scale(0.9); } }
-@keyframes flow-5 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 50% { transform: translate(4vw, -35vh) rotate(120deg) scale(1.25); } }
-@keyframes flow-6 { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 50% { transform: translate(-4vw, 35vh) rotate(-90deg) scale(1.2); } }
-@keyframes marble-pan { to { transform: translate(-3%, 2%) scale(1.06); } }
-body.still .gas, body.still .marble { animation-play-state: paused; }
+/* ---------- 2 Liquid background ----------
+   js/background.js draws swirling liquid on the canvas with WebGL.
+   Until it's ready (or if WebGL isn't available) the still image
+   assets/liquid.webp shows instead. */
+.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #08070d url('../assets/liquid.webp') center / cover; }
+#liquid { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease; }
+#liquid.ready { opacity: 1; }
 
 /* ---------- 3 App shell: one window on the marble ---------- */
 .app {
@@ -70,8 +52,8 @@ body.still .gas, body.still .marble { animation-play-state: paused; }
   /* Glass: see-through enough to show the colour moving behind, but calm.
      The background is already soft, so no live blur is needed (much faster). */
   background: var(--glass);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--shadow-window);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 40px 120px -30px rgba(0, 0, 0, 0.7);
 }
 .sidebar { position: sticky; top: var(--frame); height: calc(100vh - 2 * var(--frame)); display: flex; flex-direction: column; gap: var(--s5); padding: var(--s5) var(--s3) var(--s3) var(--s4); overflow-y: auto; scrollbar-width: thin; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 var(--s2); }

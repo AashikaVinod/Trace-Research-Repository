@@ -55,7 +55,7 @@ const CONCEPT_MAP = [
   ['Charts', 'GROUP BY, FILTER, date_trunc', 'v_sentiment_by_project, v_sessions_by_month'],
   ['Library search and tabs', 'WHERE, ILIKE, indexes', 'v_evidence_record'],
   ['"Last updated" dates', 'BEFORE UPDATE trigger', 'trace_touch_updated_at'],
-  ['Sign in to edit', 'Roles, GRANT, Row Level Security, security definer function', 'sql/03_security.sql'],
+  ['Who may edit (designed in SQL)', 'Roles, GRANT, Row Level Security, security definer function', 'sql/03_security.sql'],
   ['Installing the database', 'Transactions (BEGIN / COMMIT), sequences', 'sql/01–04'],
 ];
 
@@ -98,8 +98,8 @@ function pageDatabase() {
   view.innerHTML = `
     <header class="page-head">
       <div><h1>Database</h1>
-        <p>TRACE stores everything in PostgreSQL: 12 entity tables, 9 junction tables, 9 views, a recursive function, 5 trigger functions and Row Level Security.
-        ${MODE === 'supabase' ? 'Queries on this page run live on your Supabase database.' : 'In sample mode, queries are computed in your browser with the same logic.'}</p></div>
+        <p>TRACE's database is designed for PostgreSQL: 12 entity tables, 9 junction tables, 9 views, a recursive function, 5 trigger functions and Row Level Security, all in the <code>sql/</code> folder.
+        In this demo the app runs in your browser, so each query below is computed with the same logic as its SQL view.</p></div>
     </header>
 
     <div class="stats" aria-label="Database size">
@@ -145,14 +145,14 @@ function pageDatabase() {
     </section>`;
 
   $$('[data-run]').forEach((button) => {
-    button.onclick = async () => {
+    button.onclick = () => {
       const query = QUERIES[Number(button.dataset.run)];
       const box = $(`#result-${button.dataset.run}`);
       button.disabled = true;
       box.innerHTML = '<p class="quiet">Running…</p>';
       try {
-        const rows = await runView(query.view, query.args);
-        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows from <code>${query.view}</code>, ${MODE === 'supabase' ? 'run on PostgreSQL' : 'computed in the browser (sample mode)'}.</p>`;
+        const rows = runView(query.view, query.args);
+        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows, the same result <code>${query.view}</code> gives in PostgreSQL.</p>`;
       } catch (error) {
         box.innerHTML = `<p class="error">${esc(error.message)}</p>`;
       }

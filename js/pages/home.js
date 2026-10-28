@@ -11,9 +11,7 @@ function pageHome() {
       <section class="hero"><h1>Welcome to TRACE.</h1><p>Every design decision has a story.</p></section>
       <div class="empty row-gap">
         <h2>There's no research here yet</h2>
-        <p>${MODE === 'supabase'
-          ? 'Your Supabase database is connected but empty. Run <code>sql/04_seed_data.sql</code> in the Supabase SQL Editor to load the sample study, or create your own project.'
-          : 'Create a project to get started.'}</p>
+        <p>Create a project to get started.</p>
         <button class="btn btn-dark" id="first-project">${icon('plus', 16)} New project</button>
       </div>`;
     $('#first-project').onclick = () => editProject();

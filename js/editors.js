@@ -14,7 +14,6 @@ function words(list) {
 }
 
 async function editProject(project = null) {
-  if (!(await requireEditor())) return;
   const teamIds = project ? data.project_researcher.filter((l) => l.project_id === project.id).map((l) => l.researcher_id) : [];
   const methodIds = project ? data.project_method.filter((l) => l.project_id === project.id).map((l) => l.method_id) : [];
   const saved = await openForm({
@@ -40,7 +39,6 @@ async function editProject(project = null) {
 }
 
 async function toggleArchive(project) {
-  if (!(await requireEditor())) return;
   const archiving = !project.archived_at;
   const ok = await confirmBox(
     archiving ? 'Archive this project?' : 'Restore this project?',
@@ -48,12 +46,12 @@ async function toggleArchive(project) {
     archiving ? 'Archive' : 'Restore');
   if (!ok) return;
   try {
-    await setArchived(project.id, archiving);
+    setArchived(project.id, archiving);
     render();
     // Undo gives people a way back (HCI: user control and freedom).
     toast(archiving ? 'Project archived.' : 'Project restored.', 'success', {
       label: 'Undo',
-      run: async () => { await setArchived(project.id, !archiving); toast('Change undone.'); render(); },
+      run: () => { setArchived(project.id, !archiving); toast('Change undone.'); render(); },
     });
   } catch (error) {
     toast(error.message, 'error');
@@ -61,7 +59,6 @@ async function toggleArchive(project) {
 }
 
 async function editQuestion(projectId, question = null) {
-  if (!(await requireEditor())) return;
   const saved = await openForm({
     title: question ? 'Edit research question' : 'Add a research question',
     values: question || {},
@@ -72,7 +69,6 @@ async function editQuestion(projectId, question = null) {
 }
 
 async function editSession(session = null, projectId = null) {
-  if (!(await requireEditor())) return;
   const values = session
     ? { ...session,
       participant_ids: data.session_participant.filter((l) => l.session_id === session.id).map((l) => l.participant_id),
@@ -104,7 +100,6 @@ async function editSession(session = null, projectId = null) {
 }
 
 async function editParticipant(participant = null) {
-  if (!(await requireEditor())) return;
   const nextNumber = Math.max(0, ...data.participant.map((p) => Number(p.participant_code.slice(2)) || 0)) + 1;
   const saved = await openForm({
     title: participant ? `Edit ${participant.participant_code}` : 'New participant',
@@ -133,7 +128,6 @@ const RECORD_TEXT = {
 // Add or edit any of the five evidence records.
 // preset: { projectId, sessionId, upIds } fills in a new record.
 async function editRecord(type, record = null, preset = {}) {
-  if (!(await requireEditor())) return;
   const stage = STAGE[type];
   const prev = previousStage(type);
   const fields = [];
@@ -179,7 +173,6 @@ async function editRecord(type, record = null, preset = {}) {
 }
 
 async function editSimple(table, row = null) {
-  if (!(await requireEditor())) return;
   const setup = {
     researcher: { noun: 'team member', fields: [
       { name: 'full_name', label: 'Full name', required: true, min: 2 },

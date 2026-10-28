@@ -6,16 +6,12 @@
 //   2. Pages draw themselves from `data` (no queries inside pages).
 //   3. Each save function writes ONE change, then calls loadAll() again.
 //
-// Two modes:
-//   'supabase' - js/config.js has a URL and key: PostgreSQL via Supabase.
-//   'sample'   - config is empty: the sample study from js/sample-data.js,
-//                with changes kept in this browser (localStorage).
+// The data starts as the sample study in js/sample-data.js (the same rows
+// as sql/04_seed_data.sql). Changes are kept in this browser with
+// localStorage, so they are still there after a reload.
 // ===================================================================
 
-const MODE = SUPABASE_URL && SUPABASE_KEY ? 'supabase' : 'sample';
-let client = null;   // the Supabase client (supabase mode only)
-let data = {};       // every table, e.g. data.research_project is a list of rows
-const auth = { session: null, email: null, isEditor: false };
+let data = {}; // every table, e.g. data.research_project is a list of rows
 
 const TABLES = [
   'researcher', 'segment', 'research_method', 'research_project', 'project_researcher', 'project_method',
@@ -69,51 +65,14 @@ function copy(value) { return JSON.parse(JSON.stringify(value)); }
 // Start-up
 // -------------------------------------------------------------------
 
-// Returns a message if js/config.js is filled in wrongly, otherwise null.
-function configProblem() {
-  if (!SUPABASE_URL && !SUPABASE_KEY) return null;
-  if (!SUPABASE_URL || !SUPABASE_KEY) return 'js/config.js has only one of the two values. Fill in both, or leave both empty for sample mode.';
-  if (!SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.startsWith('http://localhost')) return 'SUPABASE_URL must start with https://';
-  if (SUPABASE_KEY.startsWith('sb_secret_')) return 'That is a SECRET key. Remove it from js/config.js, rotate it in Supabase, and use the publishable key.';
-  if (SUPABASE_KEY.split('.').length === 3) {
-    try {
-      const payload = JSON.parse(atob(SUPABASE_KEY.split('.')[1].replaceAll('-', '+').replaceAll('_', '/')));
-      if (payload.role === 'service_role') return 'That is the SERVICE ROLE key, which bypasses all security. Remove it, rotate it, and use the publishable key.';
-    } catch (error) {
-      // Not readable as a JWT: that's fine, Supabase will check it.
-    }
-  }
-  return null;
-}
-
-async function startDatabase() {
-  const problem = configProblem();
-  if (problem) {
-    const error = new Error(problem);
-    error.kind = 'config';
-    throw error;
-  }
-  if (MODE === 'supabase') {
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const result = await client.auth.getSession();
-    await setSession(result.data.session);
-  } else {
-    loadSample();
-  }
-  await loadAll();
+function startDatabase() {
+  loadSample();
+  loadAll();
 }
 
 // Reads every table into `data`.
-async function loadAll() {
-  if (MODE === 'sample') {
-    data = copy(sample);
-  } else {
-    const results = await Promise.all(TABLES.map((table) => client.from(table).select('*')));
-    for (let i = 0; i < TABLES.length; i++) {
-      if (results[i].error) throw friendlyError(results[i].error, 'load the data');
-      data[TABLES[i]] = results[i].data;
-    }
-  }
+function loadAll() {
+  data = copy(sample);
   // An observation's project comes through its session (it isn't stored twice: 3NF).
   for (const observation of data.observation) {
     const session = byId('research_session', observation.session_id);
@@ -122,7 +81,7 @@ async function loadAll() {
 }
 
 // -------------------------------------------------------------------
-// Sample mode storage (localStorage)
+// Storage (localStorage)
 // -------------------------------------------------------------------
 
 const SAMPLE_KEY = 'trace.sample.v4'; // change this when the sample data changes
@@ -145,14 +104,8 @@ function saveSample() {
   }
 }
 
-async function resetSample() {
-  sample = copy(SAMPLE_DATA);
-  saveSample();
-  await loadAll();
-}
-
-// A few database rules repeated for sample mode, so it behaves like PostgreSQL.
-function sampleChecks(table, row, existing = null) {
+// A few of the database's rules, repeated here so the demo behaves like PostgreSQL.
+function checkRules(table, row, existing = null) {
   const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const others = sample[table].filter((r) => r !== existing);
   if (table === 'research_project' && others.some((r) => same(r.title, row.title))) {
@@ -187,104 +140,47 @@ function fieldError(field, message) {
 // -------------------------------------------------------------------
 
 // INSERT one row and return it.
-async function insertRow(table, row) {
-  if (MODE === 'sample') {
-    sampleChecks(table, row);
-    const now = new Date().toISOString();
-    const nextId = Math.max(0, ...sample[table].map((r) => r.id)) + 1;
-    const saved = { ...row, id: nextId, created_at: now, updated_at: now };
-    sample[table].push(saved);
-    saveSample();
-    return saved;
-  }
-  const result = await client.from(table).insert(row).select();
-  if (result.error) throw friendlyError(result.error, 'save this');
-  if (!result.data || result.data.length === 0) throw new Error('Nothing was saved. Your account may not be allowed to edit.');
-  return result.data[0];
+function insertRow(table, row) {
+  checkRules(table, row);
+  const now = new Date().toISOString();
+  const nextId = Math.max(0, ...sample[table].map((r) => r.id)) + 1; // like an identity column
+  const saved = { ...row, id: nextId, created_at: now, updated_at: now };
+  sample[table].push(saved);
+  saveSample();
+  return saved;
 }
 
 // UPDATE one row by id and return it.
-async function updateRow(table, id, changes) {
-  if (MODE === 'sample') {
-    const existing = sample[table].find((r) => r.id === id);
-    sampleChecks(table, { ...existing, ...changes }, existing);
-    Object.assign(existing, changes, { updated_at: new Date().toISOString() });
-    saveSample();
-    return existing;
-  }
-  const result = await client.from(table).update(changes).eq('id', id).select();
-  if (result.error) throw friendlyError(result.error, 'save the changes');
-  // Row Level Security turns a forbidden update into "0 rows changed".
-  if (!result.data || result.data.length === 0) throw new Error("Nothing was saved. Your account isn't allowed to edit, or the record was removed.");
-  return result.data[0];
+function updateRow(table, id, changes) {
+  const existing = sample[table].find((r) => r.id === id);
+  checkRules(table, { ...existing, ...changes }, existing);
+  Object.assign(existing, changes, { updated_at: new Date().toISOString() }); // like the updated_at trigger
+  saveSample();
+  return existing;
 }
 
 // INSERT rows into a junction table.
-async function addLinks(table, rows) {
-  if (rows.length === 0) return;
-  if (MODE === 'sample') {
-    for (const row of rows) sample[table].push({ ...row, created_at: new Date().toISOString() });
-    saveSample();
-    return;
-  }
-  const result = await client.from(table).insert(rows).select();
-  if (result.error) throw friendlyError(result.error, 'link the records');
-  if (!result.data || result.data.length !== rows.length) throw new Error('Some links were not saved.');
+function addLinks(table, rows) {
+  for (const row of rows) sample[table].push({ ...row, created_at: new Date().toISOString() });
+  saveSample();
 }
 
 // DELETE rows from a junction table. Each row is a match like { finding_id: 3, insight_id: 5 }.
-async function removeLinks(table, rows) {
+function removeLinks(table, rows) {
   for (const match of rows) {
-    if (MODE === 'sample') {
-      sample[table] = sample[table].filter((r) => !Object.keys(match).every((key) => r[key] === match[key]));
-      saveSample();
-      continue;
-    }
-    const result = await client.from(table).delete().match(match).select();
-    if (result.error) throw friendlyError(result.error, 'remove a link');
-    if (!result.data || result.data.length === 0) throw new Error("A link couldn't be removed. Your account may not be allowed to edit.");
+    sample[table] = sample[table].filter((r) => !Object.keys(match).every((key) => r[key] === match[key]));
   }
+  saveSample();
 }
 
 // Makes a junction table match `wantedIds` for one owner record:
 // adds the missing links and removes the ones that were unticked.
-async function syncLinks(table, ownerColumn, ownerId, otherColumn, wantedIds, extraColumns = {}) {
-  const rows = MODE === 'sample' ? sample[table] : data[table];
-  const currentIds = rows.filter((r) => r[ownerColumn] === ownerId).map((r) => r[otherColumn]);
+function syncLinks(table, ownerColumn, ownerId, otherColumn, wantedIds, extraColumns = {}) {
+  const currentIds = sample[table].filter((r) => r[ownerColumn] === ownerId).map((r) => r[otherColumn]);
   const toAdd = wantedIds.filter((id) => !currentIds.includes(id));
   const toRemove = currentIds.filter((id) => !wantedIds.includes(id));
-  await addLinks(table, toAdd.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id, ...extraColumns })));
-  await removeLinks(table, toRemove.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id })));
-}
-
-// Turns a PostgreSQL error into a sentence people can act on.
-function friendlyError(error, action) {
-  const text = error.message || String(error);
-  const code = error.code || '';
-  let message = text;
-  let field = '';
-  if (/failed to fetch|networkerror|load failed/i.test(text)) {
-    message = `Couldn't reach Supabase to ${action}. Check your connection and try again.`;
-  } else if (code === '42501' || /row-level security|permission denied/i.test(text)) {
-    message = `You don't have permission to ${action}. Sign in with an editor account.`;
-  } else if (code === '23505') { // UNIQUE constraint
-    if (text.includes('participant_code')) field = 'participant_code';
-    else if (text.includes('email')) field = 'email';
-    else if (text.includes('name_key')) field = 'name';
-    else if (text.includes('question')) field = 'question_text';
-    else field = 'title';
-    message = field === 'participant_code' ? 'Another participant already uses this code.' : 'Something with this name already exists here.';
-  } else if (code === '23503') { // FOREIGN KEY
-    message = 'This refers to a record that no longer exists. Refresh the page and try again.';
-  } else if (code === 'PGRST205' || code === '42P01') {
-    message = 'The TRACE tables were not found. Run the files in the sql folder (see README).';
-  } else if (code === '23514' && text.includes('violates check constraint')) { // CHECK constraint
-    message = 'One of the values is not allowed. Check the form and try again.';
-  }
-  const friendly = new Error(message);
-  friendly.code = code;
-  friendly.field = field;
-  return friendly;
+  addLinks(table, toAdd.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id, ...extraColumns })));
+  removeLinks(table, toRemove.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id })));
 }
 
 // -------------------------------------------------------------------
@@ -445,19 +341,12 @@ function participantsBySegment() {
 }
 
 // -------------------------------------------------------------------
-// The SQL views (sql/06_views.sql), for the Database page.
-// In supabase mode this asks PostgreSQL. In sample mode it builds the
-// same rows in the browser, using the statistics above.
+// The SQL views (sql/06_views.sql), for the Database page. Each one is
+// built here in JavaScript, giving the same rows the view returns in
+// PostgreSQL (the SQL tests check the views against the same data).
 // -------------------------------------------------------------------
 
-async function runView(name, args = {}) {
-  if (MODE === 'supabase') {
-    const result = name === 'trace_lineage'
-      ? await client.rpc('trace_lineage', { p_type: args.type, p_id: args.id })
-      : await client.from(name).select('*');
-    if (result.error) throw friendlyError(result.error, 'run this query');
-    return result.data;
-  }
+function runView(name, args = {}) {
   if (name === 'trace_lineage') return lineage(args.type, args.id).rows;
   if (name === 'v_dashboard') {
     return [{
@@ -490,91 +379,56 @@ async function runView(name, args = {}) {
 // Saving. Each function writes, then reloads `data`.
 // -------------------------------------------------------------------
 
-async function saveProject(id, values) {
+function saveProject(id, values) {
   const row = pick('research_project', values);
-  const saved = id ? await updateRow('research_project', id, row) : await insertRow('research_project', { status: 'planned', ...row });
+  const saved = id ? updateRow('research_project', id, row) : insertRow('research_project', { status: 'planned', ...row });
   if (values.team_ids) {
-    await syncLinks('project_researcher', 'project_id', saved.id, 'researcher_id', values.team_ids, { project_role: 'researcher' });
-    await syncLinks('project_method', 'project_id', saved.id, 'method_id', values.method_ids || []);
+    syncLinks('project_researcher', 'project_id', saved.id, 'researcher_id', values.team_ids, { project_role: 'researcher' });
+    syncLinks('project_method', 'project_id', saved.id, 'method_id', values.method_ids || []);
   }
-  await loadAll();
+  loadAll();
   return saved;
 }
 
-async function setArchived(projectId, archived) {
-  await updateRow('research_project', projectId, { archived_at: archived ? new Date().toISOString() : null });
-  await loadAll();
+function setArchived(projectId, archived) {
+  updateRow('research_project', projectId, { archived_at: archived ? new Date().toISOString() : null });
+  loadAll();
 }
 
 // Saves one of the five evidence records. upIds = the records it is built on.
-async function saveRecord(type, id, values, upIds) {
+function saveRecord(type, id, values, upIds) {
   const row = pick(type, values);
   if (id && type !== 'observation') delete row.project_id; // a record's project never changes
-  const saved = id ? await updateRow(type, id, row) : await insertRow(type, row);
+  const saved = id ? updateRow(type, id, row) : insertRow(type, row);
   const link = STAGE[type].link;
   if (link && upIds) {
-    try {
-      await syncLinks(link.table, link.self, saved.id, link.up, upIds);
-    } catch (error) {
-      // Two separate requests are not one transaction, so say exactly what happened.
-      await loadAll();
-      const partial = new Error(`${STAGE[type].label} saved, but its links were not: ${error.message}`);
-      partial.saved = saved;
-      throw partial;
-    }
+    syncLinks(link.table, link.self, saved.id, link.up, upIds);
   }
-  await loadAll();
+  loadAll();
   return saved;
 }
 
-async function saveSession(id, values) {
+function saveSession(id, values) {
   const row = pick('research_session', values);
-  const saved = id ? await updateRow('research_session', id, row) : await insertRow('research_session', row);
-  await syncLinks('session_participant', 'session_id', saved.id, 'participant_id', values.participant_ids || []);
-  await syncLinks('session_question', 'session_id', saved.id, 'question_id', values.question_ids || []);
-  await loadAll();
+  const saved = id ? updateRow('research_session', id, row) : insertRow('research_session', row);
+  syncLinks('session_participant', 'session_id', saved.id, 'participant_id', values.participant_ids || []);
+  syncLinks('session_question', 'session_id', saved.id, 'question_id', values.question_ids || []);
+  loadAll();
   return saved;
 }
 
-async function saveParticipant(id, values) {
+function saveParticipant(id, values) {
   const row = pick('participant', values);
-  const saved = id ? await updateRow('participant', id, row) : await insertRow('participant', row);
-  await syncLinks('participant_segment', 'participant_id', saved.id, 'segment_id', values.segment_ids || []);
-  await loadAll();
+  const saved = id ? updateRow('participant', id, row) : insertRow('participant', row);
+  syncLinks('participant_segment', 'participant_id', saved.id, 'segment_id', values.segment_ids || []);
+  loadAll();
   return saved;
 }
 
 // For simple tables: researcher, research_method, segment, research_question.
-async function saveSimple(table, id, values) {
+function saveSimple(table, id, values) {
   const row = pick(table, values);
-  const saved = id ? await updateRow(table, id, row) : await insertRow(table, row);
-  await loadAll();
+  const saved = id ? updateRow(table, id, row) : insertRow(table, row);
+  loadAll();
   return saved;
 }
-
-// -------------------------------------------------------------------
-// Sign-in (supabase mode). Visitors can read; editors can write.
-// -------------------------------------------------------------------
-
-async function setSession(session) {
-  auth.session = session || null;
-  auth.email = session ? session.user.email : null;
-  auth.isEditor = false;
-  if (session) {
-    const result = await client.rpc('trace_is_editor');
-    auth.isEditor = !result.error && result.data === true;
-  }
-}
-
-async function signIn(email, password) {
-  const result = await client.auth.signInWithPassword({ email, password });
-  if (result.error) throw new Error(/invalid/i.test(result.error.message) ? 'Email or password is incorrect.' : result.error.message);
-  await setSession(result.data.session);
-}
-
-async function signOut() {
-  await client.auth.signOut();
-  await setSession(null);
-}
-
-function canEdit() { return MODE === 'sample' || auth.isEditor; }

@@ -15,9 +15,9 @@ Pick any decision and TRACE shows the real observations behind it. Every link is
 ## Contents
 
 1. [What's in the app](#whats-in-the-app)
-2. [Run it now (sample mode)](#run-it-now-sample-mode)
+2. [Run it now](#run-it-now)
 3. [How the code fits together](#how-the-code-fits-together)
-4. [Connect Supabase](#connect-supabase)
+4. [The database (sql folder)](#the-database-sql-folder)
 5. [Security model](#security-model)
 6. [Optional: real AI answers](#optional-real-ai-answers)
 7. [Push to GitHub and deploy on Vercel](#push-to-github-and-deploy-on-vercel)
@@ -52,14 +52,13 @@ Every page ends with a **"How the database does this"** panel that names the con
 
 **Keyboard shortcuts:** `/` search, `N` add something new, `A` Ask TRACE, `?` show shortcuts, `Esc` close.
 
-**Two modes**, always labelled in the sidebar card:
+**Demo data:** TRACE opens with a fictional sample study (the same rows as `sql/04_seed_data.sql`). Anything you add is kept in this browser with localStorage, so it is still there after a reload. To start again from the original sample, clear the site's data in your browser settings.
 
-- **Sample mode**: used when `js/config.js` is empty. It opens with a ready-made fictional study, and changes stay in this browser (localStorage). **Reset sample** restores the original data.
-- **Supabase mode**: used when `js/config.js` has your project URL and publishable key. Everything is read from and written to PostgreSQL. TRACE never falls back to sample data on its own.
+**Background:** a WebGL shader (`js/background.js`) draws slowly flowing liquid in the TRACE colours. **Pause motion** in the sidebar stops it. It also stops for people who ask their system for reduced motion, and it is skipped on phones.
 
-## Run it now (sample mode)
+## Run it now
 
-Double-click `index.html`. It opens with the sample study loaded.
+Double-click `index.html`. It opens with the sample study loaded. No setup is needed.
 
 You can also serve the folder, which is closer to how Vercel serves it:
 
@@ -76,22 +75,23 @@ The JavaScript uses plain `<script>` tags, with no framework, modules or build s
 
 ```
 index.html                  the page shell and the order scripts load in
-js/config.js                your Supabase URL + key (empty = sample mode), AI switch
+js/config.js                the optional AI switch
 js/icons.js                 icon shapes (Lucide)
 js/sample-data.js           the fictional sample study (generated from tools/generate_seed.py)
 js/helpers.js               esc() for safe HTML, icons, dates, toasts, dialogs, the form builder
 js/charts.js                bar, column, donut, ring and funnel charts made from HTML + CSS
-js/db.js                    ALL data access: loadAll(), save functions, statistics, sign-in
+js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
 js/assistant.js             Ask TRACE
 js/pages/*.js               one file per page: home, projects, library, trail, sessions, people, database
 js/app.js                   start-up, sidebar, shortcuts, and which page to show for each address
+js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)
 css/style.css               all styles, in numbered sections
 sql/                        01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 06 views, 99 uninstall
 api/ask.js                  optional Vercel function for real AI answers
-assets/                     logo, favicon, fonts, marble texture
-tools/                      generate_seed.py (sample data), generate_marble.py and generate_gas.py (background)
+assets/                     logo, favicon, fonts, liquid.webp (still image used if WebGL is unavailable)
+tools/                      generate_seed.py (sample data)
 tests/                      SQL tests and browser tests (not deployed)
 ```
 
@@ -103,49 +103,26 @@ The pattern every page follows:
 
 **To add a page:** write `function pageSomething()` in a new file in `js/pages/`, add a `<script>` tag for it in `index.html`, and add a line to `ROUTES` in `app.js`.
 
-## Connect Supabase
+## The database (sql folder)
 
-The Supabase dashboard changes from time to time, so menu names may differ slightly.
-
-**1. Create a project** at <https://supabase.com/dashboard>. Keep the database password in a password manager. TRACE never needs it, and it must never go in this repository.
-
-**2. Install the database.** Open **SQL Editor → New query**, then paste each file and press **Run**, one at a time and in order:
+The app runs as a browser demo, but the database behind its design is real PostgreSQL. You can install it anywhere PostgreSQL runs (a local install, or a free Supabase project's SQL Editor) and show it in class. Run the files in this order:
 
 | Order | File | What it does |
 | --- | --- | --- |
 | 1 | `sql/01_schema.sql` | 21 tables. Stops without changes if TRACE tables already exist. |
 | 2 | `sql/02_constraints_and_indexes.sql` | Foreign keys, CHECK and UNIQUE rules, indexes, triggers |
-| 3 | `sql/03_security.sql` | Row Level Security, grants, the `trace_editor` allowlist |
-| 4 | `sql/04_seed_data.sql` | The fictional sample study. Stops without changes if data already exists. |
-| 5 | `sql/06_views.sql` | 9 views and the recursive `trace_lineage` function used by the Database page |
+| 3 | `sql/03_security.sql` | Row Level Security, grants, the `trace_editor` allowlist (needs Supabase's `auth` schema, or the stubs in `tests/sql/00_supabase_local_stubs.sql`) |
+| 4 | `sql/04_seed_data.sql` | The same fictional study the app shows |
+| 5 | `sql/06_views.sql` | 9 views and the recursive `trace_lineage` function, the ones in the Database page's query lab |
 | optional | `sql/05_demo_queries.sql` | Ten read-only queries to show in class |
 
 Only `99_uninstall_trace.sql` deletes anything, and it refuses to run until you uncomment its confirmation line.
 
-**3. Create your editor account.** Go to **Authentication → Users → Add user → Create new user**, enter your email and a password, and tick **Auto Confirm User**. Then, in the SQL Editor:
-
-```sql
-insert into public.trace_editor (user_id)
-select id from auth.users where email = 'you@example.com';
-```
-
-We also recommend turning off public sign-ups (**Authentication → Sign In / Providers**). Even if they stay on, new accounts can only read.
-
-**4. Add the public configuration.** Find the **Project URL** and **Publishable key** under **Project Settings → API Keys / Data API**, and put them in `js/config.js`:
-
-```js
-const SUPABASE_URL = 'https://abcdefghijkl.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_...';
-```
-
-| Value | Safe in the browser and on GitHub? |
-| --- | --- |
-| Project URL, publishable key (or legacy anon key) | Yes, they are public by design. Row Level Security protects the data. |
-| Secret key (`sb_secret_…`), `service_role` key, database password | **Never.** TRACE refuses to start if `config.js` contains one. |
-
-Reload the app. The sidebar should say **Connected to Supabase: Viewing only**. **Sign in** changes it to **Editing as you@example.com**. If the home page says the database is empty, run `sql/04_seed_data.sql`.
+The app's Database page computes each view in the browser with the same logic, so the demo works offline. The SQL tests check the real views against the same data. An earlier version of the app could also read and write a live Supabase database; it is in the git history (commit `b57b688`) if you want to bring that back later.
 
 ## Security model
+
+This is designed into `sql/03_security.sql` and tested by the SQL tests. The browser demo has no sign-in.
 
 | Who | Can do |
 | --- | --- |
@@ -157,7 +134,7 @@ Reload the app. The sidebar should say **Connected to Supabase: Viewing only**. 
 - Row Level Security is on for every table, and views use `security_invoker`, so they obey it too.
 - `trace_editor` can't be read through the API. The `trace_is_editor()` function only answers "am I an editor?".
 - **Don't store real participant data in this demo.** Public read access is fine only because the data is fictional.
-- Every value shown on screen goes through `esc()`. `vercel.json` sets a Content Security Policy that only allows the site's own scripts, plus connections to `*.supabase.co` and the site itself.
+- Every value shown on screen goes through `esc()`. `vercel.json` sets a Content Security Policy that only allows the site's own scripts and connections.
 
 ## Optional: real AI answers
 
@@ -182,9 +159,9 @@ git push -u origin main
 
 Sign in through the browser prompt, or with `gh auth login`. Never paste a token into a chat or a commit. To put your own name on the commits first, run `git commit --amend --reset-author`, since the existing commits use a placeholder author.
 
-**Vercel:** at <https://vercel.com/new>, import the repository. Choose framework preset **Other**, with no build command and the default output directory. No environment variables are needed, unless you enable AI answers. Once it's deployed, open the URL and check that the sidebar says **Connected to Supabase**, that you can sign in, create a project and still see it after reloading, and that the browser console shows no errors.
+**Vercel:** at <https://vercel.com/new>, import the repository. Choose framework preset **Other**, with no build command and the default output directory. No environment variables are needed, unless you enable AI answers. Once it's deployed, open the URL and check that the sample study appears, that you can add a project and still see it after reloading, and that the browser console shows no errors.
 
-TRACE uses `#/` addresses, so no rewrite rules are needed. If you use a custom Supabase domain, add it to `connect-src` in `vercel.json`.
+TRACE uses `#/` addresses, so no rewrite rules are needed.
 
 ## Testing
 
@@ -193,26 +170,20 @@ Results are recorded in `docs/testing-checklist.md`.
 | Suite | Command | Needs |
 | --- | --- | --- |
 | SQL integrity, security, views (33 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Every user flow in the browser (26 steps; 27 with sign-in) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
-| The same flows against a local Supabase replica | `POSTGREST_BIN=/path/to/postgrest tests/supabase-local/run-e2e.sh` | PostgreSQL, PostgREST, Playwright |
-
-The browser test also runs against your live site: set `BASE`, `TRACE_E2E_EMAIL` and `TRACE_E2E_PASSWORD`.
+| Every user flow in the browser (25 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
 
 ## Troubleshooting
 
 | Symptom | Likely cause and fix |
 | --- | --- |
-| "TRACE cannot start with this configuration" | `js/config.js` is half-filled or contains a secret key. The page names the problem. |
-| "The TRACE tables were not found" | Run the SQL files. If you just ran them, run `notify pgrst, 'reload schema';` |
-| Query lab says a view doesn't exist | Run `sql/06_views.sql`. |
-| Signed in but still view-only | Your user isn't in `trace_editor`. Run the insert in step 3. |
-| "Couldn't reach Supabase" | Network problem, or the free project is paused. Restore it in the dashboard. |
-| Stuck on "Loading TRACE…" | Open the browser console (F12) and look for a red error. Usually it's a typo in `js/config.js`. |
-| The moving background is distracting or slow | Click **Pause motion** at the bottom of the sidebar (the choice is remembered). It also stops automatically if your system has "reduce motion" switched on, and it is skipped on phones. |
+| Stuck on "Loading TRACE…" | Open the browser console (F12) and look for a red error. Usually a file is missing from the folder. |
+| The background is still, not moving | Your browser may not support WebGL, or "reduce motion" is on, or Pause motion was pressed. The still image shows instead, and everything else works. |
+| The background feels heavy on an older laptop | Click **Pause motion** at the bottom of the sidebar (the choice is remembered). |
+| I want the original sample back | Clear this site's data in your browser settings (it is stored in localStorage). |
 
 ## Known limitations
 
-- Real Supabase and Vercel were not reachable while TRACE was built. Supabase mode was tested against a local replica: the same SQL on PostgreSQL 16, PostgREST 12.2.3 and a mock of Supabase Auth's sign-in. Verify sign-in and one write on your real project.
-- TRACE loads every table at once and searches in the browser. That's simple and fast for demo-sized data. The Data API returns at most 1,000 rows per request by default, so large datasets would need paging.
-- Saving a record and its links takes two requests, which is not one transaction. If the links fail, TRACE says so plainly. A database function would make it atomic. This makes a good discussion point about transactions.
-- One editor role, no per-project permissions, no real-time collaboration, no file uploads.
+- The app is a browser demo: data lives in this browser's localStorage. The real PostgreSQL design, with constraints, triggers, views, RLS and seed data, is in `sql/` and is tested separately.
+- The liquid background needs a graphics card to run smoothly. It was built and checked on a machine without one (about 4 frames a second there), so real-device smoothness hasn't been measured. It draws at 40% resolution and at most 30 frames a second to stay light.
+- The optional AI answers (`api/ask.js`) are untested, because no API key was available.
+- One user, no sign-in, no real-time collaboration, no file uploads.

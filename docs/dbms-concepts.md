@@ -2,7 +2,7 @@
 
 Every concept below is used for real in TRACE, and each one is tied to something you can **show** in the app. The **Database** page, and the "How the database does this" panel at the bottom of every page, show the matching SQL live.
 
-Suggested demo order (about 10 minutes): Home → Projects → New project (constraints) → Session (junction tables) → build a chain → Evidence trail (recursive CTE) → Database page (views, query lab) → sign-in (security).
+Suggested demo order (about 10 minutes): Home → Projects → New project (constraints) → Session (junction tables) → build a chain → Evidence trail (recursive CTE) → Database page (views, query lab) → `sql/03_security.sql` (security).
 
 ---
 
@@ -71,9 +71,9 @@ Suggested demo order (about 10 minutes): Home → Projects → New project (cons
 
 | Concept | Where | What to show |
 | --- | --- | --- |
-| **Roles** | `anon` (visitors) and `authenticated` (signed in) | Signed out = view only |
+| **Roles** | `anon` (visitors) and `authenticated` (signed in) | Explain with `sql/03_security.sql` (the browser demo has no sign-in) |
 | **GRANT / REVOKE** | `03_security.sql` revokes everything, then grants exactly what's needed | Nobody can DELETE projects through the API |
-| **Row Level Security (RLS)** | Policies on every table, e.g. "editors can insert" | Sign in as a non-editor: writes affect 0 rows |
+| **Row Level Security (RLS)** | Policies on every table, e.g. "editors can insert" | Show the policies in `sql/03_security.sql` and the SQL tests that prove them |
 | **Security definer function** | `trace_is_editor()` reads a table that's otherwise hidden | The editor list itself can't be read |
 | **security_invoker views** | Views run with the caller's permissions, so RLS still applies | `sql/06_views.sql` header |
 | **Principle of least privilege** | Visitors can SELECT, editors INSERT/UPDATE, nobody DELETEs entities | Security table in the README |

@@ -1,13 +1,11 @@
-// Browser test of every TRACE flow.
+// Browser test of every TRACE flow (the demo runs in sample mode).
 // Setup once:  npm install --no-save playwright && npx playwright install chromium
 // Run:         node tests/serve.mjs 8080   (in another terminal)
 //              BASE=http://localhost:8080 node tests/e2e.mjs
-// Supabase mode: also set TRACE_E2E_EMAIL and TRACE_E2E_PASSWORD (an editor).
 import { chromium } from 'playwright';
 
 const BASE = process.env.BASE || 'http://localhost:8080';
 const RUN = Date.now().toString(36).slice(-4);
-const SUPABASE = !!process.env.TRACE_E2E_EMAIL;
 let passed = 0;
 let failed = 0;
 const errors = [];
@@ -16,8 +14,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 page.setDefaultTimeout(7000);
 page.on('pageerror', (e) => errors.push(e.message));
-// 409 = the deliberate duplicate test; 400 = the deliberate wrong password (Supabase mode).
-page.on('console', (m) => { if (m.type() === 'error' && !/status of (409|400)/.test(m.text())) errors.push(m.text()); });
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 async function step(name, fn) {
   try { await fn(); passed++; console.log('PASS', name); }
@@ -47,25 +44,6 @@ await step('opens with the sample study, the logo and totals', async () => {
   check(await page.locator('.donut').count() === 1 && await page.locator('.columns').count() === 1, 'charts drawn');
 });
 
-if (SUPABASE) {
-  await step('visitor is asked to sign in before adding', async () => {
-    await page.locator('#new-btn').click();
-    await page.locator('[data-new="project"]').click();
-    await modal().getByText('Sign in to edit').waitFor();
-    await modal().getByLabel('Email').fill(process.env.TRACE_E2E_EMAIL);
-    await modal().getByLabel('Password').fill('wrong-password');
-    await save();
-    await modal().getByText('Email or password is incorrect.').waitFor();
-    await page.keyboard.press('Escape');
-  });
-  await step('sign in as an editor', async () => {
-    await page.locator('#sign-in').click();
-    await modal().getByLabel('Email').fill(process.env.TRACE_E2E_EMAIL);
-    await modal().getByLabel('Password').fill(process.env.TRACE_E2E_PASSWORD);
-    await save();
-    await page.waitForSelector('.mode-card >> text=Editing as');
-  });
-}
 
 // ---------- Shortcuts, help and motion ----------
 await step('keyboard shortcuts: / focuses search, ? shows help', async () => {
@@ -302,15 +280,6 @@ await step('Database page: every query in the lab returns rows', async () => {
   }
 });
 
-if (!SUPABASE) {
-  await step('reset sample data restores the original study', async () => {
-    await page.locator('#reset-sample').click();
-    await modal().locator('#confirm-ok').click();
-    await toastSays('Sample data restored.');
-    await open('/projects?show=all');
-    check(await page.locator('.project-card', { hasText: project }).count() === 0, 'test project removed');
-  });
-}
 
 await step('no errors in the browser console', async () => check(errors.length === 0, errors.join(' | ')));
 await browser.close();

@@ -11,8 +11,8 @@
   --ink: #15161c;          /* Trace Ink: text, primary buttons, the "decision" colour */
   --paper: #f7f6f2;        /* Trace Paper: the app window */
   --white: #ffffff;
-  --glass: rgba(250, 249, 246, 0.74);     /* the app window: frosted glass */
-  --card: rgba(255, 255, 255, 0.86);      /* cards sit on the glass */
+  --glass: rgba(248, 247, 243, 0.9);      /* the app window: slightly see-through glass */
+  --card: rgba(255, 255, 255, 0.92);      /* cards sit on the glass */
   --card-line: rgba(21, 22, 28, 0.07);
   --green: #1f5a45;        /* Trace Green: links, focus, active states */
   --green-soft: #e3eee8;
