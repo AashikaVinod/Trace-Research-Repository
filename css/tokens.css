@@ -5,10 +5,8 @@
 @font-face { font-family: 'Newsreader'; src: url('../assets/fonts/newsreader-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
 
 :root {
-  /* Canvas around the app window */
-  --canvas: #eef0f4;
-  --sky: #dfe6fb;
-  --blush: #fbe5d9;
+  /* Canvas around the app window (marble image, with this as fallback) */
+  --canvas: #efede8;
 
   /* Surfaces: only two layers inside the window (page + cards) */
   --page: #f6f6f3;
@@ -22,10 +20,9 @@
   --ink-2: #555963;
   --ink-3: #8b8f98;
 
-  /* Brand accent (navigation, focus, featured highlights) */
-  --brand: #5546e0;
-  --brand-2: #8a6cff;
-  --brand-soft: #efedfd;
+  /* Accent: a deep, flat green (no gradients) */
+  --brand: #1f5a45;
+  --brand-soft: #e3eee8;
 
   /* The five evidence stages */
   --obs: #7c6cf0;  --obs-soft: #f0eefe;
@@ -52,14 +49,14 @@
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
 
   /* Shape and depth */
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-xl: 28px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
   --shadow-sm: 0 1px 2px rgba(23, 24, 28, 0.04);
-  --shadow: 0 1px 2px rgba(23, 24, 28, 0.04), 0 8px 24px -16px rgba(30, 40, 70, 0.16);
-  --shadow-hover: 0 2px 4px rgba(23, 24, 28, 0.04), 0 18px 40px -20px rgba(30, 40, 70, 0.28);
-  --shadow-window: 0 40px 100px -40px rgba(30, 40, 70, 0.35);
+  --shadow: 0 1px 2px rgba(23, 24, 28, 0.05);
+  --shadow-hover: 0 1px 2px rgba(23, 24, 28, 0.05), 0 6px 16px -10px rgba(23, 24, 28, 0.18);
+  --shadow-window: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 30px 70px -30px rgba(40, 38, 30, 0.35), 0 0 0 1px rgba(40, 38, 30, 0.06);
 }
 
 /* Each stage sets --c (colour) and --c-soft (tint) for everything inside it. */

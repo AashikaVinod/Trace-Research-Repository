@@ -66,7 +66,7 @@ Third-party files and their licences are listed in `vendor/LICENSES.md`.
 trace/
   index.html                 The page shell; loads the scripts below in order
   vercel.json                Security headers for Vercel
-  assets/                    Favicon and fonts
+  assets/                    Favicon, fonts and marble.webp (background)
   css/
     tokens.css               Colours, fonts, radii; one colour per evidence stage
     style.css                All styles, grouped: shell, building blocks, pages, forms, small screens
@@ -83,6 +83,7 @@ trace/
   docs/                      database-design.md, testing-checklist.md
   tests/                     SQL tests and the browser test (not deployed)
   tools/generate_seed.py     Regenerates sql/04 and js/sample-data.js from one dataset
+  tools/generate_marble.py   Regenerates assets/marble.webp, the background texture (needs numpy + Pillow)
   vendor/                    supabase-js browser build and licences
 ```
 

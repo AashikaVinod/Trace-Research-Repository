@@ -34,16 +34,19 @@ function pageHome() {
   const decision = newest(data.design_decision)[0];
   const story = decision ? lineage('design_decision', decision.id) : null;
   const day = (d) => new Date(d + 'T00:00');
+  const firstStart = projects.map((p) => p.start_date).sort()[0];
+  const usedSegments = new Set(data.participant_segment.map((l) => l.segment_id)).size;
+  const archivedCount = projects.length - activeProjects().length;
 
   view.innerHTML = `
     <div class="hero-grid">
       <section class="hero">
         <span class="eyebrow">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-        <h1>${greeting}.<br>Every decision has <em>a story.</em></h1>
-        <p>Search what participants said and did, or follow a decision back to the evidence behind it.</p>
+        <h1>${greeting}.</h1>
+        <p>Since ${formatDate(firstStart)}, your team has run ${plural(data.research_session.filter((x) => x.status === 'completed').length, 'session')} and turned ${plural(data.observation.length, 'observation')} into ${plural(data.design_decision.length, 'design decision')}.</p>
         <form class="hero-search" id="hero-search" role="search">
-          ${icon('sparkles', 20)}
-          <input id="hero-q" type="search" placeholder="Search observations, insights and decisions" aria-label="Search research">
+          ${icon('search', 18)}
+          <input id="hero-q" type="search" placeholder="Search what participants said and did" aria-label="Search research">
           <button class="btn btn-dark" type="submit">Search</button>
         </form>
       </section>
@@ -52,22 +55,18 @@ function pageHome() {
         <h3>${esc(decision.title)}</h3>
         <p>Backed by ${plural(story.byStage.observation.length, 'observation')} from ${plural(new Set(story.byStage.observation.map((o) => o.session_id)).size, 'session')}.</p>
         <div class="spot-chain" aria-hidden="true">${STAGES.map((s) => `<span class="stage-${s.type}" style="opacity:${story.byStage[s.type].length ? 1 : 0.25}"></span>`).join('')}</div>
-        <span class="btn btn-light btn-small">${icon('waypoints', 15)} See its story</span>
+        <span class="btn btn-light btn-small">${icon('waypoints', 15)} View evidence trail</span>
       </a>` : ''}
     </div>
 
     <section class="stats" aria-label="Totals">
       ${[
-        ['#/projects', 'stat-feature', 'folder-kanban', 'Projects', projects.length, `${activeProjects().length} in progress`],
-        ['#/sessions', 'stage-finding', 'calendar-days', 'Sessions', data.research_session.length, `${data.research_session.filter((s) => s.status === 'planned').length} coming up`],
-        ['#/people', 'stage-observation', 'users', 'Participants', data.participant.length, 'Anonymous codes only'],
-        ['#/library?type=insight', 'stage-insight', 'sparkles', 'Insights', data.insight.length, 'Ready to act on'],
-      ].map(([href, cls, ic, label, value, note]) => `
-        <a class="stat ${cls}" href="${href}">
-          <span class="stat-icon">${icon(ic, 20)}</span>
-          <span>${label}</span><strong>${value}</strong><small>${note}</small>
-          <span class="go">${icon('arrow-up-right', 18)}</span>
-        </a>`).join('')}
+        ['#/projects', 'Projects', projects.length, archivedCount ? `${activeProjects().length} active, ${archivedCount} archived` : 'All active'],
+        ['#/sessions', 'Sessions', data.research_session.length, `${data.research_session.filter((x) => x.status === 'planned').length} planned`],
+        ['#/people', 'Participants', data.participant.length, `Across ${plural(usedSegments, 'segment')}`],
+        ['#/library?type=insight', 'Insights', data.insight.length, `From ${plural(data.finding.length, 'finding')}`],
+      ].map(([href, label, value, note]) => `
+        <a class="stat" href="${href}"><span>${label}</span><strong>${value}</strong><small>${note}</small></a>`).join('')}
     </section>
 
     <section class="bento">
