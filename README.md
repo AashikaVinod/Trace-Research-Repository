@@ -43,7 +43,7 @@ More documents:
 | **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
 | **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view. Each record page tells **the story so far**: everything it rests on and everything it led to, with the photos inline. | UNION ALL view, WHERE / ILIKE, recursive CTE |
 | **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
-| **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
+| **Evidence trail** (the main flow) | Pick a decision and follow it back, step by step, to the observations, sessions and **source photos** it came from. Lines show every link; click a source to read its pinned notes. | Recursive CTE, junction tables, exclusive arc |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
 | **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
 | **Database** | Schema diagram, rows per table, a feature-to-concept map, and a query lab that runs the real views | Everything, in one place |

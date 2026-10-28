@@ -54,14 +54,14 @@ function pageHome() {
           <p class="up-title">${esc(upNext.title)}</p>
           <p class="card-sub">${esc(byId("research_method", upNext.method_id).name)}, ${esc(byId("research_project", upNext.project_id).title)}</p>
           <p class="up-when">${icon('calendar-days', 15)} ${formatDate(upNext.session_date)} <span>${daysUntil(upNext.session_date)}</span></p>
-          <a class="btn btn-accent" href="#/sessions/${upNext.id}">${icon('play', 15)} Open session</a>`
+          <a class="btn btn-green" href="#/sessions/${upNext.id}">${icon('play', 15)} Open session</a>`
         : `<p class="quiet">No sessions planned. <a class="text-link" href="#/sessions">Plan one</a></p>`}
       </section>
 
       <section class="card">
         <div class="card-top"><h3>Evidence in use</h3></div>
         ${gauge(evidenceInUsePercent(), 'feeds the next step')}
-        <ul class="legend legend-row"><li><i style="background:var(--accent)"></i>Used</li><li><i class="hatch-swatch"></i>Waiting</li></ul>
+        <ul class="legend legend-row"><li><i style="background:var(--green)"></i>Used</li><li><i class="hatch-swatch"></i>Waiting</li></ul>
       </section>
 
       <section class="card span-2">
@@ -121,7 +121,7 @@ select title, observations from v_decision_strength order by observations desc l
 function statCard(href, label, value, recent, months) {
   return `<a class="card stat-card" href="${href}">
     <div class="stat-top"><span>${label}</span><span class="round-link">${icon('arrow-up-right', 16)}</span></div>
-    <div class="stat-mid"><strong>${value}</strong>${sparkline(months.map((m) => m.count), 'var(--accent)')}</div>
+    <div class="stat-mid"><strong>${value}</strong>${sparkline(months.map((m) => m.count), 'var(--green)')}</div>
     ${deltaBadge(recent, 'latest month')}
   </a>`;
 }
@@ -130,20 +130,13 @@ function statCard(href, label, value, recent, months) {
 function projectProgressRow(project) {
   const counts = projectCounts(project.id);
   const team = data.project_researcher.filter((l) => l.project_id === project.id).map((l) => byId('researcher', l.researcher_id));
-  const segments = STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural }));
   return `<li><a href="#/projects/${project.id}">
     <span class="progress-name"><strong>${esc(project.title)}</strong><small>${plural(counts.sessions, 'session')}</small></span>
     <span class="avatars">${team.map((r) => avatar(r.full_name, 26)).join('')}</span>
-    <span class="progress-bar">${segmentBar(segments)}</span>
+    <span class="progress-bar">${evidenceBar(project.id)}</span>
   </a></li>`;
 }
 
-function daysUntil(date) {
-  const days = Math.round((new Date(date + 'T00:00') - todayDate()) / 86400000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  return days > 0 ? `in ${days} days` : `${-days} days ago`;
-}
 
 // A one-line welcome that explains the idea (HCI: help and documentation).
 function introNote() {

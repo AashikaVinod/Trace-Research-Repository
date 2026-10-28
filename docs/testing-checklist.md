@@ -24,7 +24,7 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | Suite | Result |
 | --- | --- |
 | SQL integrity, security, view and sources tests (`tests/run-sql-tests.sh`) | 40/40 passed |
-| Every user flow (`tests/e2e.mjs`), including uploading a photo, pinning a note on it, adding notes, the written story on record pages and the Sources library | 29/29 passed |
+| Every user flow (`tests/e2e.mjs`), including the main flow (pick a decision on the trail start page, follow it to its source photo, open its pinned note), uploads, notes, the story and the Sources library | 29/29 passed |
 | Layout at 9 screen sizes (320×640 up to 1920×1080), all 13 pages | No sideways scrolling, and the sidebar never spills out of the window |
 | Text contrast on the glass over the moving glaze (light-surface pixels sampled from screenshots) | 99% at 4.76:1 or better (AA needs 4.5) |
 | Liquid background (WebGL on), all 11 pages | No errors |

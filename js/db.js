@@ -339,13 +339,6 @@ function decisionStrength() {
   }).sort((a, b) => b.observations - a.observations);
 }
 
-// Share of records that are connected to the next step (0-100).
-function linkedPercent(type) {
-  const rows = data[type];
-  if (rows.length === 0) return 0;
-  const linked = rows.filter((r) => downstream(type, r.id).length > 0).length;
-  return Math.round((linked / rows.length) * 100);
-}
 
 // Share of decisions that trace all the way back to an observation.
 function completeTrailPercent() {

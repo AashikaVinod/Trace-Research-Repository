@@ -186,11 +186,16 @@ await step('the decision page tells the whole story, including the photo', async
   await page.waitForSelector(`h1:has-text("Decision ${RUN}")`);
 });
 
-await step('evidence trail shows the complete story with lines', async () => {
-  await page.getByRole('link', { name: 'See its evidence trail' }).click();
+await step('the main flow: trace the decision back to its source photo', async () => {
+  await open('/trail');
+  await page.locator('.rows a', { hasText: `Decision ${RUN}` }).click();   // start page: pick a decision
   await page.waitForSelector('text=Complete story');
-  check(await page.locator('.trail-card').count() === 5, 'five cards');
-  check(await page.locator('#lines path').count() === 4, 'four lines');
+  check(await page.locator('.trail-card:not(.trail-source)').count() === 5, 'five evidence cards');
+  check(await page.locator('.trail-source', { hasText: `Whiteboard ${RUN}` }).count() === 1, 'the photo is at the root of the trail');
+  check(await page.locator('#lines path').count() === 5, `four evidence lines + one to the source, got ${await page.locator('#lines path').count()}`);
+  await page.locator('.trail-source', { hasText: `Whiteboard ${RUN}` }).click();   // open the source itself
+  await page.locator('.pin-list', { hasText: 'This cluster is the key moment.' }).waitFor();
+  await page.keyboard.press('Escape');
 });
 
 await step('trail: click a card, then go back', async () => {

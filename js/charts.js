@@ -50,13 +50,6 @@ function donutChart(items, centerLabel) {
   </div>`;
 }
 
-// A progress ring with a label beside it.
-function ringStat(percent, color, title, note) {
-  return `<div class="ring-row">
-    <div class="ring" style="background:conic-gradient(${color} ${percent}%, var(--hover) 0)" role="img" aria-label="${percent}%"><b>${percent}%</b></div>
-    <div><strong>${esc(title)}</strong><small>${esc(note)}</small></div>
-  </div>`;
-}
 
 // The evidence funnel: how many records reach each stage.
 // counts: { observation: 24, finding: 11, ... }  linkQuery: extra URL filter
@@ -75,8 +68,8 @@ function funnelChart(counts, linkQuery = '') {
 
 // Colours for charts, from the brand palette.
 const CHART_COLORS = {
-  positive: '#6f9f8f', neutral: '#bdb1a0', negative: '#d4602a',
-  series: ['#8a9a5b', '#6f9f8f', '#c99a2e', '#d4602a', '#2a211b', '#9c7b5e'],
+  positive: '#17a173', neutral: '#b9b7ae', negative: '#ef7d3c',
+  series: ['#7c6cf0', '#2f7fd8', '#17a173', '#ef7d3c', '#15161c', '#c9a227'],
 };
 
 // ===================================================================
@@ -143,6 +136,12 @@ function segmentBar(segments) {
   </div>`;
 }
 
+// One project's evidence as a bar split by stage (dashboard and projects table).
+function evidenceBar(projectId) {
+  const counts = projectCounts(projectId);
+  return segmentBar(STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural })));
+}
+
 // A row of dots, one per week; filled dots had research activity
 // (from the "13 days" dot timeline in the financial dashboard reference).
 // weeks: [{ label, count }]
@@ -152,22 +151,12 @@ function activityDots(weeks) {
   </div>`;
 }
 
-// Circles inside circles, one per step, evenly spaced, each labelled with
-// its count (from the "annual profits" circles in the financial dashboard).
-function concentricFunnel(counts) {
-  const sizes = [100, 82, 64, 46, 28]; // % of the box, outer ring first
-  let html = '<div class="rings-funnel" role="img" aria-label="' + esc(STAGES.map((s) => `${counts[s.type]} ${s.plural}`).join(', ')) + '">';
-  STAGES.forEach((stage, index) => {
-    html += `<span class="ring-layer stage-${stage.type}" style="width:${sizes[index]}%;height:${sizes[index]}%"><b>${counts[stage.type]}</b></span>`;
-  });
-  return html + '</div>';
-}
 
 // Three simple faces with counts (from the "how is it going?" faces in the
 // financial dashboard reference). Drawn as tiny SVGs.
 function sentimentFaces(counts) {
   const mouths = { negative: 'M8 16.5c1.2-1.6 2.5-2.2 4-2.2s2.8.6 4 2.2', neutral: 'M8.5 15.5h7', positive: 'M8 14c1.2 1.6 2.5 2.2 4 2.2s2.8-.6 4-2.2' };
-  const colors = { negative: CHART_COLORS.negative, neutral: '#8e8273', positive: '#3f6f60' };
+  const colors = { negative: CHART_COLORS.negative, neutral: '#8f8d85', positive: CHART_COLORS.positive };
   let html = '<div class="faces">';
   for (const mood of ['negative', 'neutral', 'positive']) {
     html += `<div class="face face-${mood}">

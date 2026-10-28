@@ -96,6 +96,14 @@ function recordCode(type, id) {
   return `<span class="code">${CODE_PREFIX[type]}-${String(id).padStart(2, '0')}</span>`;
 }
 
+// "in 7 days", "tomorrow", "3 days ago"
+function daysUntil(date) {
+  const days = Math.round((new Date(date + 'T00:00') - todayDate()) / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return days > 0 ? `in ${days} days` : `${-days} days ago`;
+}
+
 // A quiet line of details, e.g. meta('Project', '2 sessions').
 // The dots between items come from CSS; empty parts are skipped.
 function meta(...parts) {

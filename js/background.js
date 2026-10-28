@@ -53,13 +53,14 @@
       return total;
     }
 
-    // Celadon glaze: near-black spruce -> deep green -> celadon -> pale jade -> oat.
-    // One cool ramp keeps it calm; only the brightest folds turn pale.
+    // Molten amber on black: black -> deep brown -> copper -> amber -> cream.
+    // One warm ramp keeps it calm, and only the brightest folds turn cream,
+    // like light catching liquid gold.
     vec3 ink(float x) {
-      vec3 c = mix(vec3(0.012, 0.024, 0.020), vec3(0.05, 0.16, 0.14), smoothstep(0.00, 0.35, x));
-      c = mix(c, vec3(0.30, 0.52, 0.45), smoothstep(0.35, 0.62, x));
-      c = mix(c, vec3(0.66, 0.80, 0.71), smoothstep(0.62, 0.84, x));
-      return mix(c, vec3(0.94, 0.90, 0.82), smoothstep(0.86, 1.00, x));
+      vec3 c = mix(vec3(0.018, 0.014, 0.010), vec3(0.17, 0.075, 0.025), smoothstep(0.00, 0.35, x));
+      c = mix(c, vec3(0.62, 0.30, 0.08), smoothstep(0.35, 0.62, x));
+      c = mix(c, vec3(0.98, 0.66, 0.24), smoothstep(0.62, 0.84, x));
+      return mix(c, vec3(1.00, 0.91, 0.72), smoothstep(0.86, 1.00, x));
     }
 
     void main() {

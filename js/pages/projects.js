@@ -59,11 +59,10 @@ function projectRow(p) {
   const counts = projectCounts(p.id);
   const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => byId('researcher', l.researcher_id));
   const total = STAGES.reduce((sum, s) => sum + counts[s.type], 0);
-  const segments = STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural }));
   return `<tr class="${p.archived_at ? 'is-archived' : ''}">
     <td><a class="strong-link" href="#/projects/${p.id}">${esc(p.title)}</a><small>${esc(shorten(p.research_objective, 80))}</small></td>
     <td class="hide-sm"><span class="avatars">${team.map((r) => avatar(r.full_name, 28)).join('')}</span></td>
-    <td class="evidence-cell">${segmentBar(segments)}<small>${plural(total, 'record')}, ${counts.design_decision} decided</small></td>
+    <td class="evidence-cell">${evidenceBar(p.id)}<small>${plural(total, 'record')}, ${counts.design_decision} decided</small></td>
     <td class="hide-sm">${counts.sessions}</td>
     <td><div class="pills">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div></td>
   </tr>`;

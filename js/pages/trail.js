@@ -1,6 +1,7 @@
 // ===================================================================
-// Evidence trail: pick a record and see everything it rests on and
-// everything built on it. The lines are drawn from the junction tables.
+// Evidence trail: the main flow. Pick a decision (or any record) and
+// follow it back to the sources it came from: photos, sketches, notes.
+// The lines are drawn from the junction tables and the source links.
 // ===================================================================
 
 function pageTrail(params, query) {
@@ -47,35 +48,20 @@ select * from up;
 -- Try it live: select * from trace_lineage('design_decision', 1);`);
 
   if (!focus) {
+    // Start: one simple question, answered by a list of decisions.
     const decisions = decisionStrength().filter((d) => inProject(byId('design_decision', d.id)));
-    const counts = stageCounts(projectId || null);
     view.innerHTML = `${head}
-      <div class="grid-main">
-        <section class="card funnel-card"><div class="card-top"><div><h3>From observation to decision</h3><p class="card-sub">Each ring is one step; the smallest is what the team decided.</p></div></div>
-          <div class="funnel-layout">${concentricFunnel(counts)}
-            <ul class="legend">${STAGES.map((s) => `<li class="stage-${s.type}"><i style="background:var(--c)"></i><a href="#/library?type=${s.type}${projectId ? `&project=${projectId}` : ''}">${s.plural}</a><b>${counts[s.type]}</b></li>`).join('')}</ul>
-          </div></section>
-        <section class="card"><div class="card-top"><h3>Evidence health</h3></div>
-          <div class="rings">
-            ${ringStat(completeTrailPercent(), 'var(--ins)', 'Decisions with full evidence', 'Traced back to an observation')}
-            ${ringStat(linkedPercent('finding'), 'var(--find)', 'Findings explained', 'Lead to an insight')}
-          </div></section>
-      </div>
-      <div class="grid-2 row-gap">
-        <section class="card"><div class="card-top"><h3>Strongest decisions</h3></div>
-          <p class="card-note">Ranked by the number of observations behind them. Click one to see its story.</p>
-          ${barChart(decisions.slice(0, 6).map((d) => ({ label: shorten(d.title, 44), value: d.observations, stage: 'design_decision', href: `#/trail/design_decision/${d.id}` })))}
-        </section>
-        <section class="card"><div class="card-top"><h3>Gaps to close</h3></div>
-          <ul class="rows">${STAGES.slice(0, 4).map((stage) => {
-            const unused = data[stage.type].filter(inProject).filter((r) => downstream(stage.type, r.id).length === 0);
-            return `<li><a href="${unused[0] ? `#/trail/${stage.type}/${unused[0].id}` : '#/trail'}" class="stage-${stage.type}">
-              <span class="dot"></span>
-              <span class="row-text"><strong>${unused.length} ${stage.plural.toLowerCase()} not used yet</strong>${meta(unused.length ? esc(shorten(unused[0].title, 60)) : 'All connected')}</span>
-              <span class="chev">${icon('chevron-right', 18)}</span></a></li>`;
-          }).join('')}</ul>
-        </section>
-      </div>
+      <section class="card">
+        <div class="card-top"><div><h3>What do you want to trace?</h3><p class="card-sub">Pick a decision to follow it back to the sessions, notes and photos it came from.</p></div></div>
+        <ul class="rows">${decisions.map((d) => {
+          const sources = trailSources(lineage('design_decision', d.id)).length;
+          return `<li><a href="#/trail/design_decision/${d.id}${projectId ? `?project=${projectId}` : ''}" class="stage-design_decision">
+            <span class="dot"></span>
+            <span class="row-text"><strong>${esc(d.title)}</strong>${meta(esc(byId('research_project', d.project_id).title), plural(d.observations, 'observation'), plural(sources, 'source'))}</span>
+            <span class="chev">${icon('chevron-right', 18)}</span></a></li>`;
+        }).join('') || '<li class="quiet">No decisions in this project yet.</li>'}</ul>
+        <p class="card-note" style="margin-top:12px">Or trace any other record with the picker above.</p>
+      </section>
       ${panel}`;
     hookPickers();
     return;
@@ -88,7 +74,14 @@ select * from up;
   const observations = trail.byStage.observation;
   const sessionCount = new Set(observations.map((o) => o.session_id)).size;
 
-  let columns = '';
+  // Column 0: the sources (photos, sketches, notes) the trail rests on.
+  const sources = trailSources(trail);
+  const edges = [...trail.edges, ...sourceEdges(sources, trail)];
+  let columns = `<section class="trail-col" aria-label="Sources">
+    <h2 class="trail-head"><i style="background:var(--ink-3)"></i>Sources<span>${sources.length}</span></h2>
+    ${sources.map((src) => `<button class="trail-card trail-source" data-key="source:${src.id}" data-open-source="${src.id}">
+      <img src="${esc(src.file_url)}" alt=""><strong>${esc(src.title)}</strong></button>`).join('') || '<p class="trail-gap">No sources yet</p>'}
+  </section>`;
   for (const stage of STAGES) {
     const cards = trail.byStage[stage.type].map((r) => {
       const isFocus = `${stage.type}:${r.id}` === focusKey;
@@ -105,7 +98,7 @@ select * from up;
   view.innerHTML = `${head}
     <div class="trail-summary" aria-live="polite">
       ${missing.length ? pill('incomplete story', 'orange') : pill('complete story', 'green')}
-      ${focusType !== 'observation' ? `<span>Rests on <strong>${plural(observations.length, 'observation')}</strong> from ${plural(sessionCount, 'session')}.</span>` : ''}
+      <span>Traced back to <strong>${plural(sources.length, 'source')}</strong> and <strong>${plural(observations.length, 'observation')}</strong> from ${plural(sessionCount, 'session')}.</span>
       ${missing.map((s) => `<span class="gap">No ${s.label.toLowerCase()} ${s.step < step ? 'behind' : 'built on'} this yet.</span>`).join('')}
     </div>
     <div class="trail-scroll"><div class="trail" id="trail"><svg class="trail-lines" id="lines" aria-hidden="true"></svg>${columns}</div></div>
@@ -123,8 +116,8 @@ select * from up;
   $('#trail-pick').value = `${focusType}/${focus.id}`;
   $('#edit-focus').onclick = () => editRecord(focusType, focus);
   hookPickers();
-  drawLines(trail.edges, focusKey);
-  new ResizeObserver(() => drawLines(trail.edges, focusKey)).observe($('#trail'));
+  drawLines(edges, focusKey);
+  new ResizeObserver(() => drawLines(edges, focusKey)).observe($('#trail'));
 
   function hookPickers() {
     $('#trail-project').value = String(projectId);
@@ -133,6 +126,34 @@ select * from up;
       if (event.target.value) go(`/trail/${event.target.value}${projectId ? `?project=${projectId}` : ''}`);
     };
   }
+}
+
+// Every source attached to a record in the trail, or to a session its
+// observations came from.
+function trailSources(trail) {
+  const found = [];
+  for (const stage of STAGES) {
+    for (const record of trail.byStage[stage.type]) found.push(...sourcesFor(stage.type, record.id));
+  }
+  for (const sessionId of new Set(trail.byStage.observation.map((o) => o.session_id))) {
+    found.push(...sourcesFor('research_session', sessionId));
+  }
+  return [...new Map(found.map((src) => [src.id, src])).values()];
+}
+
+// Lines from each source to what it belongs to. A session's source links to
+// that session's observations in the trail.
+function sourceEdges(sources, trail) {
+  const edges = [];
+  for (const src of sources) {
+    const owner = ownerOf(src);
+    if (owner.type === 'research_session') {
+      for (const o of trail.byStage.observation.filter((o) => o.session_id === owner.id)) edges.push([`source:${src.id}`, `observation:${o.id}`]);
+    } else {
+      edges.push([`source:${src.id}`, `${owner.type}:${owner.id}`]);
+    }
+  }
+  return edges;
 }
 
 // Draws a curved line from each card to the cards it links to.
