@@ -73,8 +73,6 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 | Grid / list toggle, folder tabs, document cards | Research library | Repository and Files references |
 
 | Polaroid sources, pinned notes, sticky-note style comments | Sources, record and session pages | Files reference, plus real research walls |
-| "The story so far": the whole chain as plain lists with tiny photo prints | Every record page | How researchers write up a study |
-| Sources column at the root of the evidence trail | Evidence trail | Tracing a decision back to raw material |
 
 All of them are small functions in `js/charts.js` and `js/attachments.js` that return HTML.
 

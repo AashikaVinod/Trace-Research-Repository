@@ -301,7 +301,29 @@ function projectLead(projectId) {
 
 // ----- Statistics (used by charts, the assistant and the Database page) -----
 
+// Observation sentiment, for one project or all of them.
+function sentimentCounts(projectId = null) {
+  const counts = { positive: 0, neutral: 0, negative: 0 };
+  for (const o of data.observation) {
+    if (projectId === null || o.project_id === projectId) counts[o.sentiment] += 1;
+  }
+  return counts;
+}
 
+// Sessions grouped by month, oldest first: [{ month: '2026-08', label: 'Aug', sessions: 4 }]
+function sessionsByMonth(projectId = null) {
+  const groups = {};
+  for (const s of data.research_session) {
+    if (projectId !== null && s.project_id !== projectId) continue;
+    const month = s.session_date.slice(0, 7);
+    groups[month] = (groups[month] || 0) + 1;
+  }
+  return Object.keys(groups).sort().map((month) => ({
+    month,
+    label: new Date(month + '-01T00:00').toLocaleString('en-GB', { month: 'short' }),
+    sessions: groups[month],
+  }));
+}
 
 // Records that nothing builds on yet (like the SQL view v_evidence_gap).
 function evidenceGaps() {
@@ -317,8 +339,28 @@ function decisionStrength() {
   }).sort((a, b) => b.observations - a.observations);
 }
 
+// Share of records that are connected to the next step (0-100).
+function linkedPercent(type) {
+  const rows = data[type];
+  if (rows.length === 0) return 0;
+  const linked = rows.filter((r) => downstream(type, r.id).length > 0).length;
+  return Math.round((linked / rows.length) * 100);
+}
 
+// Share of decisions that trace all the way back to an observation.
+function completeTrailPercent() {
+  if (data.design_decision.length === 0) return 0;
+  const complete = decisionStrength().filter((d) => d.observations > 0).length;
+  return Math.round((complete / data.design_decision.length) * 100);
+}
 
+function participantsBySegment() {
+  return data.segment.map((g) => ({
+    id: g.id,
+    name: g.name,
+    participants: data.participant_segment.filter((l) => l.segment_id === g.id).length,
+  })).sort((a, b) => b.participants - a.participants);
+}
 
 // -------------------------------------------------------------------
 // The SQL views (sql/06_views.sql), for the Database page. Each one is
@@ -335,7 +377,22 @@ function runView(name, args = {}) {
       observations: data.observation.length, insights: data.insight.length, decisions: data.design_decision.length,
     }];
   }
+  if (name === 'v_project_summary') {
+    return data.research_project.map((p) => {
+      const c = projectCounts(p.id);
+      const lead = projectLead(p.id);
+      return { id: p.id, title: p.title, status: p.status, archived: !!p.archived_at, lead: lead ? lead.full_name : null,
+        sessions: c.sessions, observations: c.observation, findings: c.finding, insights: c.insight,
+        recommendations: c.recommendation, decisions: c.design_decision };
+    });
+  }
   if (name === 'v_evidence_gap') return evidenceGaps().map((r) => ({ record_type: r.type, id: r.id, project_id: r.project_id, title: r.title }));
+  if (name === 'v_sentiment_by_project') {
+    const projectIds = [...new Set(data.observation.map((o) => o.project_id))].sort();
+    return projectIds.map((id) => ({ project_id: id, ...sentimentCounts(id) }));
+  }
+  if (name === 'v_sessions_by_month') return sessionsByMonth().map((m) => ({ month: m.month, sessions: m.sessions }));
+  if (name === 'v_participants_by_segment') return participantsBySegment();
   if (name === 'v_source_owner') {
     return data.source.map((s) => {
       const owner = ownerOf(s);
@@ -412,10 +469,75 @@ function todayDate() {
   return d;
 }
 
+// The date to measure "recent" from: the latest day with research activity
+// (not in the future). With the sample study that's in September 2026;
+// as soon as you add something, it becomes today.
+function researchToday() {
+  const today = todayDate().getTime();
+  let latest = 0;
+  const dates = [...data.research_session.map((s) => s.session_date), ...allRecords().map((r) => r.created_at)];
+  for (const value of dates) {
+    const time = new Date(value.length === 10 ? value + 'T00:00' : value).getTime();
+    if (time <= today + 86400000 && time > latest) latest = time;
+  }
+  const day = new Date(latest || today);
+  day.setHours(0, 0, 0, 0);
+  return day;
+}
 
+// How many rows have a date within the last `days` days.
+function addedInLastDays(rows, dateKey, days) {
+  const end = researchToday().getTime() + 86400000;
+  const since = end - days * 86400000;
+  return rows.filter((row) => {
+    const time = new Date(row[dateKey].length === 10 ? row[dateKey] + 'T00:00' : row[dateKey]).getTime();
+    return time >= since && time < end;
+  }).length;
+}
 
+// Counts per month for the last `months` months, oldest first.
+// Returns [{ label: 'Jun', count: 3, isCurrent: false }, ...]
+function countsByMonth(rows, dateKey, months = 6) {
+  const result = [];
+  const now = researchToday();
+  for (let i = months - 1; i >= 0; i--) {
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+    result.push({
+      label: month.toLocaleString('en-GB', { month: 'short' }),
+      count: rows.filter((row) => String(row[dateKey]).slice(0, 7) === key).length,
+      isCurrent: i === 0,
+    });
+  }
+  return result;
+}
 
+// Sessions per week for the last `weeks` weeks (for the dot timeline).
+function sessionsByWeek(weeks = 16) {
+  const result = [];
+  const end = researchToday().getTime() + 86400000;
+  for (let i = weeks - 1; i >= 0; i--) {
+    const from = end - (i + 1) * 7 * 86400000;
+    const to = end - i * 7 * 86400000;
+    const count = data.research_session.filter((s) => {
+      const time = new Date(s.session_date + 'T00:00').getTime();
+      return time > from && time <= to;
+    }).length;
+    result.push({ label: `Week of ${formatDate(new Date(from + 86400000).toISOString().slice(0, 10))}`, count });
+  }
+  return result;
+}
 
+// Share of evidence (steps 1 to 4) that already feeds the next step.
+function evidenceInUsePercent() {
+  let total = 0;
+  let used = 0;
+  for (const stage of STAGES.slice(0, 4)) {
+    total += data[stage.type].length;
+    used += data[stage.type].filter((r) => downstream(stage.type, r.id).length > 0).length;
+  }
+  return total ? Math.round((used / total) * 100) : 0;
+}
 
 // The next planned session (or null).
 function nextSession() {
@@ -452,14 +574,37 @@ function ownerOf(row) {
   return null;
 }
 
+// The project a source belongs to (through whatever it's attached to).
+function projectOfSource(source) {
+  const owner = ownerOf(source);
+  if (!owner) return null;
+  const record = byId(owner.type, owner.id);
+  return record ? record.project_id : null;
+}
 
-// Attaches a new source. `attach` is "type:id", e.g. "finding:3".
-function saveSource(values) {
-  const [type, ownerId] = values.attach.split(':');
-  const row = { kind: 'photo', is_illustration: false, ...pick('source', values), [OWNER_COLUMN[type]]: Number(ownerId) };
-  const saved = insertRow('source', row);
+// Every source along a record's whole journey, plus the sessions its observations came from.
+function journeySources(type, id) {
+  const trail = lineage(type, id);
+  const found = [];
+  for (const stage of STAGES) {
+    for (const record of trail.byStage[stage.type]) found.push(...sourcesFor(stage.type, record.id));
+  }
+  const sessionIds = new Set(trail.byStage.observation.map((o) => o.session_id));
+  for (const sessionId of sessionIds) found.push(...sourcesFor('research_session', sessionId));
+  return [...new Map(found.map((s) => [s.id, s])).values()];
+}
+
+// Attaches a new source (or updates one). `attach` is "type:id", e.g. "finding:3".
+function saveSource(id, values) {
+  const row = pick('source', values);
+  if (values.attach) {
+    const [type, ownerId] = values.attach.split(':');
+    for (const column of Object.values(OWNER_COLUMN)) row[column] = null;
+    row[OWNER_COLUMN[type]] = Number(ownerId);
+  }
+  const saved = id ? updateRow('source', id, row) : insertRow('source', { kind: 'photo', is_illustration: false, ...row });
   loadAll();
-  if (!saveSample()) throw new Error('Your browser storage is full, so this photo will disappear when you reload. Try a smaller image.');
+  if (!saveSample()) throw Object.assign(new Error('Your browser storage is full, so this photo will disappear when you reload. Try a smaller image.'), { saved });
   return saved;
 }
 

@@ -30,6 +30,10 @@ function icon(name, size = 18) {
     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes}</svg>`;
 }
 
+// The TRACE logo mark (assets/logo-mark.svg).
+function logo(size = 28) {
+  return `<img src="assets/logo-mark.svg" width="${size}" height="${size}" alt="">`;
+}
 
 // ----- Text and dates ------------------------------------------------
 
@@ -86,20 +90,6 @@ const TONES = {
 };
 function statusPill(value) { return pill(value, TONES[value] || 'grey'); }
 
-// A short archive ID for a record, e.g. OBS-04 or DEC-01 (its primary key).
-const CODE_PREFIX = { observation: 'OBS', finding: 'FND', insight: 'INS', recommendation: 'REC', design_decision: 'DEC', research_session: 'SES' };
-function recordCode(type, id) {
-  return `<span class="code">${CODE_PREFIX[type]}-${String(id).padStart(2, '0')}</span>`;
-}
-
-// "in 7 days", "tomorrow", "3 days ago"
-function daysUntil(date) {
-  const days = Math.round((new Date(date + 'T00:00') - todayDate()) / 86400000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  return days > 0 ? `in ${days} days` : `${-days} days ago`;
-}
-
 // A quiet line of details, e.g. meta('Project', '2 sessions').
 // The dots between items come from CSS; empty parts are skipped.
 function meta(...parts) {
@@ -107,7 +97,33 @@ function meta(...parts) {
   return `<span class="meta">${items.map((part) => `<span>${part}</span>`).join('')}</span>`;
 }
 
+// "How the database does this" panel shown at the bottom of pages.
+// concepts: list of DBMS concept names. sql: the matching SQL.
+function dbPanel(concepts, sql, note = '') {
+  return `<details class="db-panel">
+    <summary>${icon('database')} How the database does this ${icon('chevron-down')}</summary>
+    <div class="db-body">
+      <div class="concepts">${concepts.map((c) => `<span class="concept">${esc(c)}</span>`).join('')}</div>
+      ${note ? `<p class="muted small">${note}</p>` : ''}
+      <pre class="sql">${highlightSql(sql)}</pre>
+    </div>
+  </details>`;
+}
 
+// Colours SQL keywords so queries are easier to read.
+const SQL_WORDS = ['select', 'from', 'where', 'join', 'left join', 'on', 'group by', 'order by', 'count', 'distinct',
+  'union all', 'with recursive', 'as', 'and', 'or', 'not exists', 'insert into', 'values', 'update', 'set', 'delete',
+  'create view', 'create policy', 'create trigger', 'references', 'primary key', 'foreign key', 'unique', 'check',
+  'returning', 'limit', 'filter', 'is null', 'ilike', 'in', 'desc', 'begin', 'commit'];
+function highlightSql(sql) {
+  let html = esc(sql.trim());
+  html = html.replace(/(--[^\n]*)/g, '<span class="cm">$1</span>');
+  html = html.replace(/(&#39;[^&]*?&#39;)/g, '<span class="str">$1</span>');
+  for (const word of SQL_WORDS) {
+    html = html.replace(new RegExp(`\\b(${word})\\b`, 'gi'), '<span class="kw">$1</span>');
+  }
+  return html;
+}
 
 // ----- Toast messages ------------------------------------------------
 // toast('Saved.') or toast('Archived.', 'success', { label: 'Undo', run: fn })

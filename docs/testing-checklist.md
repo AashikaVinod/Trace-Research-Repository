@@ -24,22 +24,23 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | Suite | Result |
 | --- | --- |
 | SQL integrity, security, view and sources tests (`tests/run-sql-tests.sh`) | 40/40 passed |
-| Every user flow (`tests/e2e.mjs`), including the main flow: pick a decision on the Trace page, follow it to its source photo, open its pinned note | 26/26 steps passed |
-| Layout at 9 screen sizes (320×640 up to 1920×1080), all 10 page addresses | No sideways scrolling, and the sidebar never spills out of the window |
-| Liquid background (WebGL on), all pages | No errors |
+| Every user flow (`tests/e2e.mjs`), including uploading a photo, pinning a note on it, adding notes, flows and the Sources library | 28/28 passed |
+| Layout at 9 screen sizes (320×640 up to 1920×1080), all 13 pages | No sideways scrolling, and the sidebar never spills out of the window |
+| Text contrast on the glass over the moving liquid (113,000+ light-surface pixels sampled from screenshots) | 99% at 5.11:1 or better (AA needs 4.5); the few lower pixels are borders and chart hatching, not text backgrounds |
+| Liquid background (WebGL on), all 11 pages | No errors |
+| Colour contrast of all 17 palette text pairs | All pass WCAG AA |
 | Reduced motion, keyboard focus, skip link | Pass |
 
 The flows covered are:
-- creating and editing projects, questions, sessions and participants;
-- all five evidence steps, added from the record they build on, with linking and unlinking;
-- uploading a photo, pinning a note on it, and adding notes;
-- the story on record pages, and the trace back to the source photo;
-- search, evidence tabs and filters;
+- creating and editing projects, questions, sessions, participants, team members, methods and segments;
+- all five evidence steps, with linking and unlinking;
+- the trail and its back navigation;
+- search, tabs and filters;
 - duplicate refusal, archive with Undo, and restore;
 - every query in the Database page;
 - `/` to search, and pausing the background.
 
-**Not tested:** a live database (the demo saves in the browser), the real Vercel deployment, real screen readers, and the background's smoothness on a machine with a graphics card.
+**Not tested:** a live database (the demo saves in the browser); real Supabase Auth; the real Vercel deployment; real screen readers.
 
 ## The 20 required checks
 

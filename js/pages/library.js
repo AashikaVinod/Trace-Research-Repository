@@ -4,7 +4,7 @@
 // ===================================================================
 
 function pageLibrary(params, query) {
-  setCrumbs(['Evidence']);
+  setCrumbs(['Research library']);
   let type = STAGE[query.type] ? query.type : '';
   let projectId = query.project ? Number(query.project) : '';
   let search = query.q || '';
@@ -33,7 +33,14 @@ function pageLibrary(params, query) {
         <span class="count" id="count" aria-live="polite"></span>
       </div>
       <div id="results"></div>
-    </div>`;
+    </div>
+    ${dbPanel(['UNION ALL', 'View', 'WHERE + ILIKE (search)', 'Index'], `
+-- All five record tables combined into one list (view in sql/06_views.sql)
+select record_type, id, title from v_evidence_record
+where (title ilike '%slot%' or description ilike '%slot%')
+  and record_type = 'insight'      -- the tab you pick
+  and project_id = 2;              -- the project you pick`,
+    'Indexes on project_id (sql/02) keep filtering by project fast as the tables grow.')}`;
   $('#project').value = String(projectId);
 
   function draw() {
@@ -74,40 +81,22 @@ function docCard(r) {
       <span class="doc-type"><b>${stage.step}</b>${stage.label}</span>
       <p>${esc(shorten(r.description, 150))}</p>
     </div>
-    <div class="doc-info"><strong>${esc(r.title)}</strong>${meta(`${CODE_PREFIX[r.type]}-${String(r.id).padStart(2, '0')}`, esc(project ? project.title : ''), status)}</div>
+    <div class="doc-info"><strong>${esc(r.title)}</strong>${meta(esc(project ? project.title : ''), status)}</div>
   </a>`;
 }
 
-
-// "The story so far": the whole chain this record belongs to, written as
-// plain lists, the way a researcher would document it.
-const STORY_HEADINGS = {
-  observation: 'What we saw', finding: 'What we found', insight: 'What it means',
-  recommendation: 'What we suggested', design_decision: 'What we decided',
-};
-function storyBlock(type, record) {
-  const trail = lineage(type, record.id);
-  let html = '';
+// A five-part strip showing which step this record is, and whether the
+// steps either side of it are linked.
+function chainPosition(type, upCount, downCount) {
+  const step = STAGE[type].step;
+  let html = `<div class="position" aria-label="Step ${step} of 5">`;
   for (const stage of STAGES) {
-    const items = trail.byStage[stage.type];
-    html += `<div class="story-part stage-${stage.type}">
-      <h4>${STORY_HEADINGS[stage.type]} <span class="count">${items.length}</span></h4>
-      ${items.length ? `<ul>${items.map((item) => {
-        const isThis = stage.type === type && item.id === record.id;
-        const photos = sourcesFor(stage.type, item.id);
-        const session = stage.type === 'observation' ? byId('research_session', item.session_id) : null;
-        return `<li class="${isThis ? 'is-this' : ''}">${recordCode(stage.type, item.id)}
-          ${isThis ? `<strong>${esc(item.title)}</strong> <span class="quiet">(this ${stage.label.toLowerCase()})</span>` : `<a href="#/record/${stage.type}/${item.id}">${esc(item.title)}</a>`}
-          ${session ? `<span class="quiet"> from ${esc(session.title)}</span>` : ''}
-          ${photos.map((p) => `<button class="story-photo" data-open-source="${p.id}" aria-label="Open ${esc(p.title)}"><img src="${esc(p.file_url)}" alt=""></button>`).join('')}</li>`;
-      }).join('')}</ul>` : '<p class="quiet">Nothing yet.</p>'}
-    </div>`;
+    let state = '';
+    if (stage.step === step) state = 'here';
+    else if ((stage.step === step - 1 && upCount) || (stage.step === step + 1 && downCount)) state = 'linked';
+    html += `<span class="stage-${stage.type} ${state}">${stage.step}. ${stage.label}</span>`;
   }
-  return `<section class="card story row-gap" id="story">
-    <div class="card-top"><div><h3>The story so far</h3><p class="card-sub">Everything this ${STAGE[type].label.toLowerCase()} rests on, and everything it led to</p></div>
-      <a class="text-link" href="#/trail/${type}/${record.id}">See it as a diagram ${icon('arrow-right', 14)}</a></div>
-    <div class="story-parts">${html}</div>
-  </section>`;
+  return html + '</div>';
 }
 
 
@@ -129,18 +118,27 @@ function pageRecord(params) {
   const prev = previousStage(type);
   const next = nextStage(type);
   const project = byId('research_project', r.project_id);
-  setCrumbs(['Evidence', '#/library'], [stage.plural, `#/library?type=${type}`], [r.title]);
+  const builtOn = upstream(type, r.id);
+  const leadsTo = downstream(type, r.id);
+  setCrumbs(['Research library', '#/library'], [stage.plural, `#/library?type=${type}`], [r.title]);
+
+  function linkList(items) {
+    return `<div class="link-list">${items.map((x) => `
+      <a class="link-item stage-${x.type}" href="#/record/${x.type}/${x.id}"><span class="dot"></span>
+        <span><strong>${esc(x.title)}</strong><small>${esc(shorten(x.description, 110))}</small></span></a>`).join('')}</div>`;
+  }
 
   view.innerHTML = `
     <div class="record-layout">
       <article class="paper stage-${type}">
-        <span class="doc-type"><b>${stage.step}</b>${stage.label}</span> ${recordCode(type, r.id)}
+        ${chainPosition(type, builtOn.length, leadsTo.length)}
+        <span class="doc-type"><b>${stage.step}</b>${stage.label}</span>
         <h1>${esc(r.title)}</h1>
         <p class="paper-text">${esc(r.description)}</p>
         <div class="actions">
-          <a class="btn btn-dark" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} Trace it</a>
           <button class="btn" id="edit">${icon('pencil', 15)} Edit${prev ? ' and link' : ''}</button>
-          ${next && !project.archived_at ? `<button class="btn" id="add-next">${icon('plus', 15)} Add a ${next.label.toLowerCase()}</button>` : ''}
+          <a class="btn" href="#/flow/${type}/${r.id}">${icon('route', 15)} See its flow</a>
+          <a class="btn" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} See its evidence trail</a>
         </div>
       </article>
       <aside class="card facts">
@@ -151,8 +149,27 @@ function pageRecord(params) {
         </dl>
       </aside>
     </div>
-    ${storyBlock(type, r)}
-    <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>`;
+    <div class="grid-2 row-gap">
+      ${prev ? `<section class="card"><div class="card-top"><h3>Built on (${builtOn.length})</h3></div>
+        ${builtOn.length ? linkList(builtOn) : `<p class="quiet">No ${prev.plural.toLowerCase()} support this yet. Use “Edit and link” to connect some.</p>`}</section>` : ''}
+      ${next ? `<section class="card"><div class="card-top"><h3>Leads to (${leadsTo.length})</h3>
+        ${project.archived_at ? '' : `<button class="btn btn-small" id="add-next">${icon('plus', 15)} ${next.label}</button>`}</div>
+        ${leadsTo.length ? linkList(leadsTo) : `<p class="quiet">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
+    </div>
+    <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>
+    ${dbPanel(['M:N junction table', 'JOIN', 'Trigger (same-project check)', 'CHECK constraint'], prev ? `
+-- What this ${stage.label.toLowerCase()} is built on: a JOIN through the junction table
+select p.id, p.title
+from ${stage.link.table} l
+join ${prev.type} p on p.id = l.${stage.link.up}
+where l.${stage.link.self} = ${r.id};
+
+-- Linking: one row per pair. A trigger rejects links across projects.
+insert into ${stage.link.table} (${stage.link.up}, ${stage.link.self}) values (…, ${r.id});` : `
+-- An observation belongs to one session (foreign key)
+select * from observation where id = ${r.id};
+-- Its project is found through the session, not stored twice (3NF)
+select s.project_id from observation o join research_session s on s.id = o.session_id where o.id = ${r.id};`)}`;
 
   hookAttachments(view);
   $('#edit').onclick = () => editRecord(type, r);

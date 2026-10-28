@@ -45,31 +45,15 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | **Jakob's law** (work like other apps) | Familiar patterns: a sidebar, `/` to search, Esc to close, toasts with Undo. |
 | **Aesthetic-usability effect** | Consistent tokens, a real logo and calm spacing make the tool feel trustworthy. |
 
-## 30% simpler (latest round)
+## Small simplification (latest round)
 
-Feedback: too complicated, too many tabs and things everywhere, and a lot still looked AI-made.
+The design stays exactly as it was (Bricolage Grotesque + Onest, amber liquid, green accent). Three features that added little were removed:
 
-| Before | After |
+| Removed | Why |
 | --- | --- |
-| 8 pages in the sidebar, 3 group labels, 2 tool buttons | 6 pages, no labels, 1 button (Pause motion) |
-| Top bar: search, Quick answers, New | Search, New |
-| Home: 13 blocks (sparkline stat cards, gauge, faces, leaderboard, dot timeline, charts, banner) | 3 blocks: totals, "Trace a decision", "Up next" |
-| Record page: 9 blocks | 4: the record, the story so far, sources, notes |
-| A "How the database does this" panel at the bottom of every page | Only on the Database page |
-| Quick answers (a chat-style panel) and an optional AI server function | Removed |
-| Separate People and Sources pages | Participants live on Sessions; sources live on records, sessions and the trace |
-| New menu: 9 choices | 5 starting points; later steps are added from the record they build on, so they are linked automatically |
-
-Counted on screen: 57 elements down to 25 (56% fewer). App code: 4,227 lines down to 2,927 (31% fewer), with every removed function and CSS rule confirmed unused by a script.
-
-## Simpler main flow (earlier round)
-
-| Feedback | Change |
-| --- | --- |
-| Go back to the previous colours and fonts | Restored: Bricolage Grotesque + Onest, the amber liquid, deep green accent and violet/blue/green/orange stages |
-| The journey should be simpler | The Flows page is gone. Each record page has a plain **"The story so far"** list instead |
-| The main flow is tracing back to sources | **Evidence trail** is now the core flow. Its start page asks one question ("What do you want to trace?") with a list of decisions, each showing its observations and sources. The trail has a **Sources** column at its root, with lines from each photo to the record or session it belongs to, and it fits a 1280px screen without scrolling sideways |
-| Simplify the code | Removed 3 unused functions, 42 unused CSS rules and the Flows page (130 lines); shared the evidence bar and date helpers instead of repeating them |
+| Quick answers (chat-style panel) and its optional AI server function | It repeated information already shown on the pages, and it was the most AI-looking part of the app |
+| Grid / list toggle in the Research library | Two ways to show the same records; the grid stays |
+| Keyboard-shortcuts button and help dialog | Rarely used; `/` (search), `N` (new) and `Esc` still work |
 
 ## Human-made polish pass (earlier round)
 

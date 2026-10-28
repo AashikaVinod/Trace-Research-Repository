@@ -172,28 +172,48 @@ async function editRecord(type, record = null, preset = {}) {
   if (saved) { toast(`${stage.label} saved.`); record ? render() : go(`/record/${type}/${saved.id}`); }
 }
 
+async function editSimple(table, row = null) {
+  const setup = {
+    researcher: { noun: 'team member', fields: [
+      { name: 'full_name', label: 'Full name', required: true, min: 2 },
+      { name: 'email', label: 'Email', type: 'email', required: true, pattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/, patternMessage: 'Enter a valid email.' },
+      { name: 'role_title', label: 'Role' }] },
+    research_method: { noun: 'method', fields: [{ name: 'name', label: 'Name', required: true, min: 2 }, { name: 'description', label: 'Description', type: 'textarea', rows: 2 }] },
+    segment: { noun: 'segment', fields: [{ name: 'name', label: 'Name', required: true, min: 2 }, { name: 'description', label: 'Description', type: 'textarea', rows: 2 }] },
+  }[table];
+  const saved = await openForm({
+    title: row ? `Edit ${setup.noun}` : `New ${setup.noun}`,
+    values: row || {},
+    fields: setup.fields,
+    onSave: (v) => saveSimple(table, row?.id, v),
+  });
+  if (saved) { toast('Saved.'); render(); }
+}
 
 // The "+ New" button in the top bar.
 function openNewMenu() {
-  // Findings, insights, recommendations and decisions are added from the
-  // record they build on ("Add a finding" on an observation), so they are
-  // linked automatically. The menu only has the starting points.
-  const items = [
+  const study = [
     ['project', 'folder-kanban', 'Project', 'Start a new study'],
     ['session', 'calendar-days', 'Session', 'An interview or test'],
-    ['observation', 'file-text', 'Observation', 'What someone did or said'],
     ['participant', 'user-plus', 'Participant', 'Anonymous, by code'],
     ['source', 'upload', 'Source', 'A photo, sketch or document'],
   ];
+  const hints = { observation: 'What someone did or said', finding: 'A pattern across sessions', insight: 'Why the pattern matters', recommendation: 'What should change', design_decision: 'What the team decided' };
+  const evidence = STAGES.map((s) => [s.type, 'file-text', `${s.step}. ${s.label}`, hints[s.type]]);
+  const item = ([key, ic, label, hint]) => `
+      <button class="new-item ${STAGE[key] ? `stage-${key}` : ''}" data-new="${key}">
+        <span class="new-icon">${icon(ic)}</span><span><strong>${esc(label)}</strong><small>${esc(hint)}</small></span>
+      </button>`;
   const { dialog, close } = openModal({
     title: 'Add to TRACE',
-    body: `<div class="new-menu">${items.map(([key, ic, label, hint]) => `
-      <button class="new-item" data-new="${key}">
-        <span class="new-icon">${icon(ic)}</span><span><strong>${label}</strong><small>${hint}</small></span>
-      </button>`).join('')}</div>`,
+    wide: true,
+    body: `<div class="new-menu">
+      <p class="label-sm">Study</p>${study.map(item).join('')}
+      <p class="label-sm">Evidence, in order</p>${evidence.map(item).join('')}
+    </div>`,
   });
-  dialog.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-new]');
+  dialog.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-new]');
     if (!button) return;
     close();
     const key = button.dataset.new;
@@ -201,6 +221,6 @@ function openNewMenu() {
     else if (key === 'session') editSession();
     else if (key === 'participant') editParticipant();
     else if (key === 'source') editSource();
-    else editRecord('observation');
+    else editRecord(key);
   });
 }

@@ -5,6 +5,7 @@
 function pageProjects(params, query) {
   setCrumbs(['Projects']);
   let show = query.show || 'active';
+  let search = query.q || '';
 
   view.innerHTML = `
     <header class="page-head">
@@ -17,15 +18,27 @@ function pageProjects(params, query) {
         <button class="chip" data-show="all">All</button>
         <button class="chip" data-show="archived">Archived</button>
       </div>
+      <label class="sr" for="filter">Search projects</label>
+      <input class="input search-box" id="filter" type="search" placeholder="Search projects" value="${esc(search)}">
       <span class="count" id="count" aria-live="polite"></span>
     </div>
-    <div id="list"></div>`;
+    <div id="list"></div>
+    ${dbPanel(['LEFT JOIN', 'Correlated subquery', 'Soft delete (archived_at)', 'WHERE filter', 'View'], `
+-- One row per project with its lead and evidence counts
+select * from v_project_summary;
+
+-- "Active" vs "Archived" is a WHERE filter on a nullable column
+select * from research_project where archived_at is null;    -- active
+select * from research_project where archived_at is not null; -- archived`,
+    'Projects are archived instead of deleted. Foreign keys use ON DELETE RESTRICT, so the database refuses to delete a project that still has sessions or evidence.')}`;
 
   function draw() {
-    setQuery({ show: show === 'active' ? '' : show });
+    setQuery({ show: show === 'active' ? '' : show, q: search });
     $$('[data-show]').forEach((button) => button.setAttribute('aria-pressed', button.dataset.show === show));
+    const text = search.toLowerCase();
     const list = data.research_project
       .filter((p) => (show === 'all') || (show === 'archived' ? p.archived_at : !p.archived_at))
+      .filter((p) => `${p.title} ${p.description} ${p.research_objective}`.toLowerCase().includes(text))
       .sort((a, b) => (b.start_date > a.start_date ? 1 : -1));
     $('#count').textContent = plural(list.length, 'project');
     $('#list').innerHTML = list.length
@@ -37,6 +50,7 @@ function pageProjects(params, query) {
 
   $('#add').onclick = () => editProject();
   $$('[data-show]').forEach((button) => { button.onclick = () => { show = button.dataset.show; draw(); }; });
+  $('#filter').oninput = (event) => { search = event.target.value; draw(); };
   draw();
 }
 
@@ -45,10 +59,11 @@ function projectRow(p) {
   const counts = projectCounts(p.id);
   const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => byId('researcher', l.researcher_id));
   const total = STAGES.reduce((sum, s) => sum + counts[s.type], 0);
+  const segments = STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural }));
   return `<tr class="${p.archived_at ? 'is-archived' : ''}">
     <td><a class="strong-link" href="#/projects/${p.id}">${esc(p.title)}</a><small>${esc(shorten(p.research_objective, 80))}</small></td>
     <td class="hide-sm"><span class="avatars">${team.map((r) => avatar(r.full_name, 28)).join('')}</span></td>
-    <td class="evidence-cell">${evidenceBar(p.id)}<small>${plural(total, 'record')}, ${counts.design_decision} decided</small></td>
+    <td class="evidence-cell">${segmentBar(segments)}<small>${plural(total, 'record')}, ${counts.design_decision} decided</small></td>
     <td class="hide-sm">${counts.sessions}</td>
     <td><div class="pills">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div></td>
   </tr>`;
@@ -59,12 +74,14 @@ function pageProject(params) {
   if (!p) return notFound('Project', '#/projects', 'projects');
   setCrumbs(['Projects', '#/projects'], [p.title]);
 
+  const counts = projectCounts(p.id);
   const archived = !!p.archived_at;
   const lead = projectLead(p.id);
   const sessions = data.research_session.filter((s) => s.project_id === p.id).sort((a, b) => (b.session_date > a.session_date ? 1 : -1));
   const questions = data.research_question.filter((q) => q.project_id === p.id);
   const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => ({ ...byId('researcher', l.researcher_id), role: l.project_role }));
   const methods = data.project_method.filter((l) => l.project_id === p.id).map((l) => byId('research_method', l.method_id));
+  const sentiment = sentimentCounts(p.id);
 
   view.innerHTML = `
     ${archived ? `<div class="notice" role="status">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
@@ -77,10 +94,14 @@ function pageProject(params) {
       <div class="actions">
         <button class="btn" id="edit">${icon('pencil', 15)} Edit</button>
         <button class="btn" id="archive">${icon(archived ? 'archive-restore' : 'archive', 15)} ${archived ? 'Restore' : 'Archive'}</button>
-        <a class="btn" href="#/trail?project=${p.id}">${icon('waypoints', 15)} Trace</a>
+        <a class="btn" href="#/trail?project=${p.id}">${icon('waypoints', 15)} Evidence trail</a>
       </div>
     </section>
 
+    <div class="grid-2 row-gap">
+      <section class="card"><div class="card-top"><h3>Evidence funnel</h3></div>${funnelChart(counts, `&project=${p.id}`)}</section>
+      <section class="card"><div class="card-top"><h3>How sessions felt</h3></div>${sentimentFaces(sentiment)}</section>
+    </div>
 
     <div class="grid-main row-gap">
       <section class="card">
@@ -102,7 +123,19 @@ function pageProject(params) {
         </section>
       </div>
     </div>
-`;
+
+    ${dbPanel(['Foreign key (1:N)', 'M:N junction table', 'Composite primary key', 'Trigger', 'UPDATE'], `
+-- Sessions belong to this project through a foreign key (one-to-many)
+select * from research_session where project_id = ${p.id} order by session_date desc;
+
+-- The team is a many-to-many relationship stored in a junction table
+select r.full_name, pr.project_role
+from project_researcher pr
+join researcher r on r.id = pr.researcher_id
+where pr.project_id = ${p.id};
+
+-- Archiving is an UPDATE. A trigger then blocks new work in this project.
+update research_project set archived_at = now() where id = ${p.id};`)}`;
 
   $('#edit').onclick = () => editProject(p);
   $('#archive').onclick = () => toggleArchive(p);

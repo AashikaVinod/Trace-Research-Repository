@@ -56,7 +56,7 @@ document.addEventListener('click', (event) => {
   const open = event.target.closest('[data-open-source]');
   if (open) openSourceViewer(Number(open.dataset.openSource));
   const add = event.target.closest('[data-add-source]');
-  if (add) editSource(add.dataset.addSource);
+  if (add) editSource(null, add.dataset.addSource);
   const remove = event.target.closest('[data-delete-note]');
   if (remove) {
     confirmBox('Delete this note?', 'The note will be removed for everyone.', 'Delete').then((ok) => {
@@ -95,25 +95,28 @@ function attachOptions() {
   return list;
 }
 
-// Add a source: a photo or scan, attached to one session or record.
-async function editSource(attachTo = '') {
+// Add a source (photo upload) or edit its details.
+async function editSource(source = null, attachTo = '') {
+  const owner = source ? ownerOf(source) : null;
   const saved = await openForm({
-    title: 'Add a source',
-    submitLabel: 'Add source',
-    values: { kind: 'whiteboard', attach: attachTo || null },
+    title: source ? 'Edit source' : 'Add a source',
+    submitLabel: source ? 'Save changes' : 'Add source',
+    values: source ? { ...source, attach: `${owner.type}:${owner.id}` } : { kind: 'whiteboard', attach: attachTo || null },
     fields: [
-      { name: 'file', label: 'Photo or scan', type: 'file', required: true, help: 'A whiteboard, a sketch, notes or a screenshot. It is resized before saving.' },
+      { type: 'section', label: 'The file' },
+      ...(source ? [] : [{ name: 'file', label: 'Photo or scan', type: 'file', required: true, help: 'A photo of a whiteboard, a sketch, notes or a screenshot. It is resized before saving.' }]),
       { name: 'title', label: 'Title', required: true, min: 3 },
       { name: 'kind', label: 'Kind', type: 'select', required: true, options: words(SOURCE_KINDS) },
       { name: 'caption', label: 'Caption', type: 'textarea', rows: 2, help: 'What does it show, and why does it matter?' },
+      { type: 'section', label: 'Where it belongs' },
       { name: 'attach', label: 'Attach to', type: 'select', required: true, options: attachOptions() },
     ],
     onSave: async (values) => {
-      values.file_url = await readImage(values.file);
-      return saveSource(values);
+      if (values.file) values.file_url = await readImage(values.file);
+      return saveSource(source ? source.id : null, values);
     },
   });
-  if (saved) { toast('Source added.'); render(); openSourceViewer(saved.id); }
+  if (saved) { toast(source ? 'Source saved.' : 'Source added.'); render(); if (!source && saved.id) openSourceViewer(saved.id); }
 }
 
 // The viewer: the image with numbered pins, and the notes beside it.
@@ -153,6 +156,7 @@ function openSourceViewer(sourceId) {
             <select class="input" id="pin-author">${data.researcher.map((r) => `<option value="${r.id}">${esc(r.full_name)}</option>`).join('')}</select>
             <div class="note-form-row"><button class="btn btn-small" type="button" id="pin-cancel">Cancel</button><button class="btn btn-dark btn-small" type="submit">Pin note</button></div>
           </form>` : `<p class="help">${icon('pin', 14)} Click anywhere on the image to pin a note.</p>`}
+        <div class="viewer-actions"><button class="btn btn-small" id="edit-source">${icon('pencil', 14)} Edit details</button></div>
       </aside>
     </div>`;
 
@@ -178,6 +182,7 @@ function openSourceViewer(sourceId) {
     $$('[data-delete-pin]', dialog).forEach((button) => {
       button.onclick = () => { deleteRow('annotation', Number(button.dataset.deletePin)); draw(); render(); };
     });
+    $('#edit-source', dialog).onclick = () => editSource(byId('source', sourceId));
   }
   draw();
 }

@@ -36,20 +36,21 @@ More documents:
 
 ## What's in the app
 
-Six pages, one main flow: **trace a design decision back to the sources it came from.**
-
 | Page | What you can do | Main DBMS idea |
 | --- | --- | --- |
-| **Home** | Totals, a short list of decisions to trace, and the next planned session | Aggregates, views |
-| **Projects** | A table of projects with their team and evidence; create, edit, archive (with Undo) and restore. Each project page lists its sessions and research questions | JOINs, soft delete, triggers |
-| **Sessions** | All sessions with project and participant filters, and the participant list (codes only). Session pages hold observations, sources and notes | Foreign keys, many-to-many junction tables |
-| **Evidence** | The five kinds of evidence in folder tabs, with search. Each record page shows the record, **the story so far** (what it rests on and what it led to), its sources and its notes | UNION ALL view, WHERE / ILIKE, recursive CTE |
-| **Trace** (the main flow) | Pick a decision and follow it back to the observations, sessions and **source photos** behind it. Click a photo to read its pinned notes | Recursive CTE, junction tables, exclusive arc |
-| **Database** | The schema, which DBMS concept powers each feature, and a query lab that runs the key views | Everything, in one place |
+| **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
+| **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
+| **Research library** | Folder tabs for the five evidence types, search and project filter | UNION ALL view, WHERE / ILIKE |
+| **Flows** | Every insight, decision, finding or recommendation as its own journey: a step-by-step page from observations to decisions, with the sources and notes at each step | Recursive CTE, exclusive arc |
+| **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
+| **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
+| **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
+| **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
+| **Database** | Schema diagram, rows per table, a feature-to-concept map, and a query lab that runs the real views | Everything, in one place |
 
-**Sources and notes:** on any session or record, add a photo (a whiteboard, sketch or notes page), pin notes on it, and leave notes for the team.
+Every page ends with a **"How the database does this"** panel that names the concepts behind it and shows the SQL.
 
-**Keyboard:** `/` jumps to search, `Esc` closes a dialog.
+**Keyboard:** `/` search, `N` add something new, `Esc` close.
 
 **Demo data:** TRACE opens with a fictional sample study (the same rows as `sql/04_seed_data.sql`). Anything you add is kept in this browser with localStorage, so it is still there after a reload. To start again from the original sample, clear the site's data in your browser settings.
 
@@ -81,7 +82,7 @@ js/charts.js                charts and dashboard components (sparklines, gauge, 
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
 js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
-js/pages/*.js               one file per page: home, projects, sessions, library (evidence), trail (trace), database
+js/pages/*.js               one file per page: home, projects, library, trail, flows, sources, sessions, people, database
 js/app.js                   start-up, sidebar, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)
@@ -160,7 +161,7 @@ Results are recorded in `docs/testing-checklist.md`.
 | Suite | Command | Needs |
 | --- | --- | --- |
 | SQL integrity, security, views (33 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Every user flow in the browser (26 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
+| Every user flow in the browser (28 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
 
 ## Troubleshooting
 
