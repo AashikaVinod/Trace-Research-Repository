@@ -1,0 +1,16 @@
+# Dependencies and tooling (only needed for optional local tests)
+node_modules/
+package-lock.json
+.vercel/
+
+# Local secrets — TRACE never needs any of these, but guard against accidents
+.env
+.env.*
+*.local.js
+*.pem
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
