@@ -15,22 +15,23 @@ The build environment could not reach `supabase.co` or `vercel.com`. Supabase mo
 
 The browser was headless Chromium running the vendored `supabase-js` 2.117.3, with the production Content-Security-Policy from `vercel.json` applied.
 
-## Results (28 October 2026)
+## Results (28 October 2026, after the redesign)
 
 | Suite | Result |
 | --- | --- |
-| Unit tests (`tests/unit.test.mjs`) | 9/9 passed |
 | SQL integrity and security tests (`tests/run-sql-tests.sh`) | 29/29 passed |
-| Browser workflow, demo mode (`tests/e2e.mjs`) | 19/19 passed |
-| Browser access checks, Supabase replica (`tests/supabase-local/readonly.mjs`) | 6/6 passed |
-| Browser workflow, Supabase replica, signed in as editor | 20/20 passed. Rows confirmed in PostgreSQL afterwards. |
-| Layout check at 390 px and 820 px wide | No horizontal overflow on dashboard, trail, library or project pages; mobile navigation works |
+| Browser workflow, sample mode (`tests/e2e.mjs`) | 15/15 passed |
+| Browser workflow, Supabase replica, signed in as editor | 16/16 passed. The test's project and decision rows were confirmed in PostgreSQL. |
+| Opening `index.html` directly as a file | Home page loads the sample study with no errors |
+| Phone (390 px) and tablet layouts | No horizontal overflow; menu drawer works |
+
+Not re-tested after the redesign: the signed-out visitor checks (sign-in prompt, wrong-password message, non-editor view). The database-side protection they relied on is still covered by the SQL tests.
 
 ## The 20 required checks
 
 | # | Check | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | App opens without major console errors | ✅ | Every e2e run fails on any page error or console error |
+| 1 | App opens without major console errors | ✅ | The e2e test fails on any page or console error (except the deliberate 409 from the duplicate test) |
 | 2 | Navigation works | ✅ | All 11 routes render; mobile drawer opens, closes with Escape, navigates |
 | 3 | Projects load from Supabase | 🟡 | Dashboard shows 4 projects read through PostgREST |
 | 4 | A project can be created | 🟡 ✅ | Both modes |
@@ -47,7 +48,7 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | 15 | Dashboard metrics match the database | 🟡 ✅ | Dashboard total equals the project list; seed counts match SQL |
 | 16 | Invalid form data is rejected | ✅ | Short title, short objective, end date before start, bad participant code |
 | 17 | Database errors are communicated clearly | 🟡 ✅ | Duplicate title message, permission message, wrong password message |
-| 18 | Missing or unsafe configuration is handled | ✅ | Empty config gives demo mode; half-filled, secret or `service_role` keys give a configuration error (unit-tested) |
+| 18 | Missing or unsafe configuration is handled | 🟡 | Empty config gives sample mode (tested). The checks for half-filled, secret or `service_role` keys (`configProblem()` in `js/db.js`) were not automatically tested after the redesign. |
 | 19 | Deployed site loads and assets work | ⬜ | Needs the Vercel URL |
 | 20 | Deployed site performs a real database operation | ⬜ | Needs real Supabase and Vercel |
 

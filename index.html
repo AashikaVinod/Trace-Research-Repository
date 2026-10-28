@@ -3,59 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TRACE</title>
-  <meta name="description" content="TRACE is a UX research repository that connects observations to the design decisions they support.">
-  <meta name="theme-color" content="#F6F4EF">
+  <title>TRACE · UX research repository</title>
+  <meta name="description" content="TRACE connects UX research observations to the design decisions they support.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="assets/fonts/schibsted-grotesk-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/responsive.css">
-  <script type="module" src="js/app.js"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <div class="app" id="app">
-    <aside class="sidebar" id="sidebar" aria-label="Main">
-      <a class="brand" href="#/" aria-label="TRACE dashboard">
-        <span class="brand-word">TRACE</span>
-        <span class="brand-thread" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+  <a class="skip" href="#view">Skip to content</a>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="brand-name">TRACE</span>
       </a>
-      <p class="brand-tagline">Every design decision has a story.</p>
-      <nav class="nav">
-        <ul>
-          <li><a href="#/" data-nav="dashboard"><span data-icon="layout-dashboard"></span>Dashboard</a></li>
-          <li><a href="#/projects" data-nav="projects"><span data-icon="folder-kanban"></span>Projects</a></li>
-          <li><a href="#/library" data-nav="library"><span data-icon="library"></span>Research library</a></li>
-          <li><a href="#/trail" data-nav="trail"><span data-icon="waypoints"></span>Evidence trail</a></li>
-          <li><a href="#/sessions" data-nav="sessions"><span data-icon="calendar-days"></span>Sessions</a></li>
-          <li><a href="#/participants" data-nav="participants"><span data-icon="users"></span>Participants</a></li>
-          <li><a href="#/reference" data-nav="reference"><span data-icon="tags"></span>Team and methods</a></li>
-        </ul>
+      <nav class="nav" aria-label="Main">
+        <a href="#/" data-nav="/">Home</a>
+        <a href="#/projects" data-nav="/projects">Projects</a>
+        <a href="#/library" data-nav="/library">Research library</a>
+        <a href="#/trail" data-nav="/trail">Evidence trail</a>
+        <a href="#/sessions" data-nav="/sessions">Sessions</a>
+        <a href="#/people" data-nav="/people">People</a>
       </nav>
-      <p class="sidebar-note">All sample projects, people and results in TRACE are fictional.</p>
+      <div class="mode-card" id="mode-card"></div>
     </aside>
     <div class="scrim" id="scrim" hidden></div>
-    <div class="main-col">
+    <div class="main">
       <header class="topbar">
-        <button type="button" class="icon-btn menu-btn" id="menu-btn" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button>
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu" aria-expanded="false"></button>
         <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
-        <form class="global-search" id="global-search" role="search">
-          <label class="visually-hidden" for="global-q">Search research records</label>
-          <span data-icon="search"></span>
-          <input id="global-q" name="q" type="search" placeholder="Search research" autocomplete="off">
+        <form class="search" id="search" role="search">
+          <span id="search-icon"></span>
+          <input id="search-input" type="search" placeholder="Search research…" aria-label="Search research records">
         </form>
-        <div class="topbar-status" id="status"></div>
+        <button class="btn btn-dark" id="new-btn"></button>
+        <div class="account" id="account"></div>
       </header>
-      <div id="banner"></div>
-      <main id="main" class="main" tabindex="-1">
-        <div class="state state-loading" role="status"><span class="spinner" aria-hidden="true"></span><span>Starting TRACE…</span></div>
+      <main class="view" id="view" tabindex="-1">
+        <p class="loading">Loading TRACE…</p>
       </main>
     </div>
   </div>
   <div class="toasts" id="toasts"></div>
-  <noscript><p class="noscript">TRACE needs JavaScript enabled to run.</p></noscript>
+
+  <!-- Plain scripts (no modules), so the app also opens straight from a file. -->
+  <script src="vendor/supabase-2.117.3.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/sample-data.js"></script>
+  <script src="js/helpers.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/editors.js"></script>
+  <script src="js/pages/home.js"></script>
+  <script src="js/pages/projects.js"></script>
+  <script src="js/pages/library.js"></script>
+  <script src="js/pages/trail.js"></script>
+  <script src="js/pages/sessions.js"></script>
+  <script src="js/pages/people.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

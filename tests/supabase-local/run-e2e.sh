@@ -23,7 +23,6 @@ TRACE_TEST_URL="http://localhost:54321" TRACE_TEST_KEY="$ANON" node tests/serve.
 P3=$!
 trap 'kill $P1 $P2 $P3 2>/dev/null || true' EXIT
 sleep 1.5
-BASE=http://localhost:8090 node tests/supabase-local/readonly.mjs
-BASE=http://localhost:8090 TRACE_E2E_EMAIL=editor@example.org TRACE_E2E_PASSWORD=editor-pass node tests/e2e.mjs
+BASE=http://localhost:8090 TRACE_E2E_EMAIL=editor@example.org TRACE_E2E_PASSWORD=editor-pass node ${E2E_SCRIPT:-tests/e2e.mjs}
 echo "--- rows written to PostgreSQL by the browser test:"
-su postgres -c "psql -At -d trace_test -c \"select 'project', title from research_project where title like 'E2E%' union all select 'decision', title from design_decision where title like 'E2E%'\""
+su postgres -c "psql -At -d trace_test -c \"select 'project', title from research_project where title like 'Demo project%' union all select 'decision', title from design_decision where title like 'Decision %'\""

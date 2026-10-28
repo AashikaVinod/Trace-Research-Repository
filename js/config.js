@@ -1,17 +1,18 @@
-// TRACE public configuration.
+// ===================================================================
+// TRACE configuration
+// -------------------------------------------------------------------
+// Leave both values empty to run in SAMPLE MODE: the app opens with a
+// ready-made fictional research project, and anything you add is saved
+// in this browser only (localStorage).
 //
-// Leave both values empty to run in demo mode (sample data stored in this
-// browser only). To connect to Supabase, paste your project's values from
-// Supabase Dashboard -> Project Settings -> API (Data API / API Keys).
+// To use your Supabase database, paste the two values from your
+// Supabase dashboard (Project Settings -> API Keys / Data API).
+// Both values are PUBLIC by design. Row Level Security protects the
+// data (see sql/03_security.sql).
 //
-// Both values are PUBLIC by design: anyone can read them in the browser.
-// Your data is protected by Row Level Security (sql/03_security.sql), not
-// by hiding these values.
-//
-// NEVER put a secret key here: no service_role key, no "sb_secret_..." key,
-// no database password. TRACE refuses to start if it detects one.
+// NEVER put a secret key ("sb_secret_..."), the service_role key or the
+// database password here. TRACE refuses to start if it sees one.
+// ===================================================================
 
-export const SUPABASE_URL = '';
-
-// A publishable key ("sb_publishable_...") or the legacy "anon" public key.
-export const SUPABASE_PUBLISHABLE_KEY = '';
+const SUPABASE_URL = '';
+const SUPABASE_KEY = ''; // the publishable key ("sb_publishable_...") or legacy anon key

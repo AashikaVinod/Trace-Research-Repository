@@ -1,238 +1,111 @@
-// Projects: list with search and filters, detail page, and project forms.
-import * as data from '../data-access.js';
-import { VOCAB } from '../rules.js';
-import { STAGES } from '../evidence.js';
-import { replaceQuery } from '../router.js';
-import {
-  h, icon, button, linkButton, loadingState, errorState, emptyState, formatDate, excerpt,
-  statusPill, toneFor, plural, confirmDialog, toast, today,
-} from '../ui.js';
-import { openForm, vocabOptions, toOptions } from '../forms.js';
-import { openSessionForm } from './sessions.js';
+// Projects list and project page.
 
-// ---------------------------------------------------------------------
-// Forms
-// ---------------------------------------------------------------------
+function pageProjects(params, query) {
+  setCrumbs(['Projects']);
+  let show = query.show || 'active';
+  let search = query.q || '';
 
-export async function openProjectForm(ctx, project = null) {
-  const result = await openForm({
-    title: project ? 'Edit project' : 'New project',
-    table: 'research_project',
-    initial: project || { status: 'planned', start_date: today() },
-    submitLabel: project ? 'Save changes' : 'Create project',
-    successMessage: project ? 'Project saved.' : 'Project created.',
-    fields: [
-      { name: 'title', label: 'Title', type: 'text', placeholder: 'e.g. Mobile banking onboarding' },
-      { name: 'research_objective', label: 'Research objective', type: 'textarea', rows: 3, help: 'What should this research help the team understand or decide?' },
-      { name: 'description', label: 'Description', type: 'textarea', rows: 3 },
-      { name: 'status', label: 'Status', type: 'select', options: vocabOptions(VOCAB.project_status) },
-      { name: 'start_date', label: 'Start date', type: 'date', half: true },
-      { name: 'end_date', label: 'End date', type: 'date', half: true },
-    ],
-    onSubmit: (values) => (project ? data.updateProject(project.id, values) : data.createProject(values)),
-  });
-  if (!result) return;
-  if (!project && result.id) ctx.navigate(`/projects/${result.id}`);
-  else ctx.refresh();
-}
-
-async function openQuestionForm(ctx, projectId, question = null) {
-  const result = await openForm({
-    title: question ? 'Edit research question' : 'Add research question',
-    table: 'research_question',
-    initial: question || { project_id: projectId },
-    submitLabel: question ? 'Save changes' : 'Add question',
-    successMessage: question ? 'Question saved.' : 'Question added.',
-    fields: [{ name: 'question_text', label: 'Question', type: 'textarea', rows: 3, placeholder: 'e.g. Where do people stop, and why?' }],
-    onSubmit: (values) => data.saveQuestion(question?.id ?? null, { ...values, project_id: projectId }),
-  });
-  if (result) ctx.refresh();
-}
-
-async function openTeamForm(ctx, detail) {
-  const lead = detail.team.find((t) => t.project_role === 'lead');
-  const result = await openForm({
-    title: 'Edit methods and team',
-    table: 'project_team',
-    initial: {
-      method_ids: detail.methods.map((m) => m.id),
-      researcher_ids: detail.team.map((t) => t.researcher_id),
-      lead_id: lead?.researcher_id ?? null,
-    },
-    submitLabel: 'Save changes',
-    successMessage: 'Methods and team saved.',
-    fields: [
-      { name: 'method_ids', label: 'Research methods', type: 'multi', options: toOptions(detail.allMethods, (m) => m.name), emptyText: 'Add methods on the Team and methods page first.' },
-      { name: 'researcher_ids', label: 'Team members', type: 'multi', options: toOptions(detail.allResearchers, (r) => r.full_name, (r) => r.role_title || '') },
-      { name: 'lead_id', label: 'Project lead', type: 'select', numeric: true, required: false, emptyLabel: 'No lead', options: toOptions(detail.allResearchers, (r) => r.full_name), help: 'The lead is added to the team automatically.' },
-    ],
-    onSubmit: async (v) => {
-      await data.saveProjectMethods(detail.project.id, v.method_ids);
-      await data.saveProjectTeam(detail.project.id, v.researcher_ids, v.lead_id);
-      return true;
-    },
-  });
-  if (result) ctx.refresh();
-}
-
-async function toggleArchive(ctx, project) {
-  const archiving = !project.archived_at;
-  const ok = await confirmDialog({
-    title: archiving ? `Archive “${project.title}”?` : `Restore “${project.title}”?`,
-    body: archiving
-      ? 'Archived projects keep all their records but are hidden by default and accept no new sessions or evidence. You can restore it at any time.'
-      : 'The project will appear in lists again and accept new sessions and evidence.',
-    confirmLabel: archiving ? 'Archive project' : 'Restore project',
-  });
-  if (!ok) return;
-  try {
-    if (archiving) await data.archiveProject(project.id); else await data.restoreProject(project.id);
-    toast(archiving ? 'Project archived.' : 'Project restored.');
-    ctx.refresh();
-  } catch (e) {
-    toast(e.message, { tone: 'error' });
-  }
-}
-
-// ---------------------------------------------------------------------
-// List
-// ---------------------------------------------------------------------
-
-export async function renderList(ctx) {
-  ctx.setContext({ title: 'Projects', crumbs: [{ label: 'Projects' }] });
-  ctx.view.replaceChildren(loadingState('Loading projects'));
-  let projects;
-  try { projects = await data.fetchProjects(); } catch (e) { if (!ctx.stale()) ctx.view.replaceChildren(errorState(e, ctx.refresh)); return; }
-  if (ctx.stale()) return;
-
-  const state = { q: ctx.query.q || '', status: ctx.query.status || '', archived: ctx.query.archived === '1' };
-  const search = h('input', { type: 'search', class: 'input search-input', placeholder: 'Search projects', 'aria-label': 'Search projects', value: state.q });
-  const status = h('select', { class: 'input', 'aria-label': 'Filter by status' },
-    h('option', { value: '' }, 'All statuses'), VOCAB.project_status.map((s) => h('option', { value: s }, s[0].toUpperCase() + s.slice(1))));
-  status.value = state.status;
-  const archived = h('input', { type: 'checkbox', checked: state.archived });
-  const count = h('span', { class: 'result-count', 'aria-live': 'polite' });
-  const results = h('div', {});
+  view.innerHTML = `
+    <header class="page-head">
+      <div><h1>Projects</h1><p>Each project holds the questions, sessions and evidence of one study.</p></div>
+      <button class="btn btn-dark" id="add">${icon('plus', 16)} New project</button>
+    </header>
+    <div class="toolbar">
+      <div class="chips" role="group" aria-label="Show">
+        ${['active', 'all', 'archived'].map((v) => `<button class="chip" data-show="${v}">${capital(v)}</button>`).join('')}
+      </div>
+      <input class="input search-box" id="filter" type="search" placeholder="Search projects" aria-label="Search projects" value="${esc(search)}">
+    </div>
+    <div id="list"></div>`;
 
   function draw() {
-    const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
-    const list = projects.filter((p) => (state.archived || !p.archived_at)
-      && (!state.status || p.status === state.status)
-      && terms.every((t) => [p.title, p.description, p.research_objective, p.lead?.full_name].join(' ').toLowerCase().includes(t)));
-    const hiddenArchived = state.archived ? 0 : projects.filter((p) => p.archived_at).length;
-    count.textContent = `${plural(list.length, 'project')}${hiddenArchived ? `, ${hiddenArchived} archived hidden` : ''}`;
-    replaceQuery({ q: state.q, status: state.status, archived: state.archived ? '1' : '' });
-    if (!projects.length) {
-      results.replaceChildren(emptyState({ title: 'No projects yet', body: 'Create a project to start organising research.', action: button('New project', { icon: 'plus', variant: 'primary', onClick: ctx.guard(() => openProjectForm(ctx)) }) }));
-      return;
-    }
-    if (!list.length) {
-      results.replaceChildren(emptyState({
-        title: 'No projects match these filters',
-        action: button('Clear filters', { onClick: () => { state.q = ''; state.status = ''; search.value = ''; status.value = ''; draw(); } }),
-      }));
-      return;
-    }
-    results.replaceChildren(h('div', { class: 'table-wrap' }, h('table', { class: 'table' },
-      h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Project'), h('th', { scope: 'col' }, 'Status'), h('th', { scope: 'col', class: 'hide-sm' }, 'Lead'),
-        h('th', { scope: 'col', class: 'num' }, 'Sessions'), h('th', { scope: 'col', class: 'hide-sm' }, 'Dates'))),
-      h('tbody', {}, list.map((p) => h('tr', { class: p.archived_at ? 'row-archived' : null },
-        h('td', {}, h('a', { class: 'row-title', href: `#/projects/${p.id}` }, p.title), h('p', { class: 'row-sub' }, excerpt(p.research_objective, 120))),
-        h('td', {}, h('div', { class: 'pills' }, statusPill(p.status, toneFor.status[p.status]), p.archived_at ? statusPill('archived') : null)),
-        h('td', { class: 'hide-sm' }, p.lead?.full_name || '—'),
-        h('td', { class: 'num' }, String(p.sessionCount)),
-        h('td', { class: 'hide-sm' }, formatDate(p.start_date), p.end_date ? ` to ${formatDate(p.end_date)}` : '')))))));
+    setQuery({ show: show === 'active' ? '' : show, q: search });
+    $$('[data-show]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.show === show));
+    const list = data.research_project
+      .filter((p) => (show === 'all' ? true : show === 'archived' ? p.archived_at : !p.archived_at))
+      .filter((p) => `${p.title} ${p.description} ${p.research_objective}`.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => (b.start_date > a.start_date ? 1 : -1));
+    if (!list.length) { $('#list').innerHTML = `<div class="empty"><h2>No projects here</h2><p>Try another filter, or create a project.</p></div>`; return; }
+    $('#list').innerHTML = `<div class="project-grid">${list.map(projectCard).join('')}</div>`;
   }
 
-  search.addEventListener('input', () => { state.q = search.value; draw(); });
-  status.addEventListener('change', () => { state.status = status.value; draw(); });
-  archived.addEventListener('change', () => { state.archived = archived.checked; draw(); });
-
-  ctx.view.replaceChildren(
-    h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Projects'), h('p', { class: 'page-sub' }, 'Each project groups the questions, sessions and evidence for one research effort.')),
-      h('div', { class: 'page-actions' }, button('New project', { icon: 'plus', variant: 'primary', onClick: ctx.guard(() => openProjectForm(ctx)) }))),
-    h('div', { class: 'toolbar' }, search, status, h('label', { class: 'checkbox' }, archived, 'Show archived'), count),
-    results);
+  $('#add').onclick = () => editProject();
+  $$('[data-show]').forEach((b) => { b.onclick = () => { show = b.dataset.show; draw(); }; });
+  $('#filter').oninput = (e) => { search = e.target.value; draw(); };
   draw();
 }
 
-// ---------------------------------------------------------------------
-// Detail
-// ---------------------------------------------------------------------
+function projectCard(p) {
+  const counts = projectCounts(p.id);
+  const lead = projectLead(p.id);
+  return `<a class="card project-card ${p.archived_at ? 'is-archived' : ''}" href="#/projects/${p.id}">
+    <div class="card-top">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div>
+    <h3>${esc(p.title)}</h3>
+    <p class="muted">${esc(shorten(p.research_objective, 110))}</p>
+    <div class="mini-chain">${STAGES.map((s) => `<span class="stage-${s.type}" title="${counts[s.type]} ${s.plural.toLowerCase()}">${counts[s.type]}</span>`).join('')}</div>
+    <div class="card-foot">
+      ${lead ? `${avatar(lead.full_name, 26)}<span class="small">${esc(lead.full_name)}</span>` : '<span class="small muted">No lead</span>'}
+      <span class="small muted push">${plural(counts.sessions, 'session')}</span>
+    </div>
+  </a>`;
+}
 
-export async function renderDetail(ctx) {
-  const id = Number(ctx.params.id);
-  ctx.setContext({ title: 'Project', crumbs: [{ label: 'Projects', href: '#/projects' }, { label: 'Loading…' }] });
-  ctx.view.replaceChildren(loadingState('Loading project'));
-  let d;
-  try { d = await data.fetchProjectDetail(id); } catch (e) { if (!ctx.stale()) ctx.view.replaceChildren(errorState(e, ctx.refresh)); return; }
-  if (ctx.stale()) return;
-  if (!d) {
-    ctx.setContext({ title: 'Project not found', crumbs: [{ label: 'Projects', href: '#/projects' }, { label: 'Not found' }] });
-    ctx.view.replaceChildren(emptyState({ title: 'Project not found', body: `There is no project with id ${ctx.params.id}.`, action: linkButton('Back to projects', '#/projects') }));
-    return;
-  }
-  const p = d.project;
+function pageProject(params) {
+  const p = byId('research_project', Number(params.id));
+  if (!p) { setCrumbs(['Projects', '#/projects'], ['Not found']); view.innerHTML = `<div class="empty"><h2>Project not found</h2><a class="btn" href="#/projects">Back to projects</a></div>`; return; }
+  setCrumbs(['Projects', '#/projects'], [p.title]);
+  const counts = projectCounts(p.id);
+  const sessions = data.research_session.filter((s) => s.project_id === p.id).sort((a, b) => (b.session_date > a.session_date ? 1 : -1));
+  const questions = data.research_question.filter((q) => q.project_id === p.id);
+  const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => ({ ...byId('researcher', l.researcher_id), role: l.project_role }));
+  const methods = data.project_method.filter((l) => l.project_id === p.id).map((l) => byId('research_method', l.method_id)).filter(Boolean);
   const archived = !!p.archived_at;
-  ctx.setContext({ title: p.title, crumbs: [{ label: 'Projects', href: '#/projects' }, { label: p.title }] });
 
-  const head = h('header', { class: 'detail-head' },
-    h('div', { class: 'pills' }, statusPill(p.status, toneFor.status[p.status]), archived ? statusPill('archived', 'dark') : null),
-    h('h1', {}, p.title),
-    h('div', { class: 'page-actions' },
-      button('Edit project', { icon: 'pencil', onClick: ctx.guard(() => openProjectForm(ctx, p)) }),
-      button(archived ? 'Restore project' : 'Archive project', { icon: archived ? 'archive-restore' : 'archive', onClick: ctx.guard(() => toggleArchive(ctx, p)) }),
-      linkButton('Open in library', `#/library?project=${p.id}`, { icon: 'library', variant: 'ghost' })));
+  view.innerHTML = `
+    ${archived ? `<div class="notice">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
+    <section class="card project-head">
+      <div class="card-top">${statusPill(p.status)}<span class="muted small">${formatDate(p.start_date)}${p.end_date ? ` – ${formatDate(p.end_date)}` : ''}</span></div>
+      <h1>${esc(p.title)}</h1>
+      <p class="lede">${esc(p.research_objective)}</p>
+      ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
+      <div class="actions">
+        <button class="btn" id="edit">${icon('pencil', 15)} Edit</button>
+        <button class="btn" id="archive">${icon(archived ? 'archive-restore' : 'archive', 15)} ${archived ? 'Restore' : 'Archive'}</button>
+        <a class="btn" href="#/trail?project=${p.id}">${icon('waypoints', 15)} Evidence trail</a>
+      </div>
+    </section>
 
-  const notice = archived ? h('div', { class: 'notice notice-warn', role: 'note' }, icon('archive'),
-    h('p', {}, `Archived on ${formatDate(p.archived_at)}. Its records stay readable, but it accepts no new sessions or evidence until it is restored.`)) : null;
+    <section class="chain chain-large">
+      ${STAGES.map((s) => `<a class="chain-step stage-${s.type}" href="#/library?project=${p.id}&type=${s.type}"><strong>${counts[s.type]}</strong><span>${s.plural}</span></a>`).join('')}
+    </section>
 
-  const counts = h('div', { class: 'counts-strip', 'aria-label': 'Evidence in this project' },
-    STAGES.map((s) => h('a', { class: `stage-${s.type}`, href: `#/library?project=${p.id}&type=${s.type}` },
-      h('strong', {}, String(d.counts[s.type])), h('span', {}, s.plural))));
+    <div class="two-col">
+      <section class="card">
+        <div class="card-top"><h3>Sessions (${sessions.length})</h3>${archived ? '' : `<button class="btn btn-small" id="add-session">${icon('plus', 15)} Session</button>`}</div>
+        ${sessions.length ? `<ul class="rows">${sessions.map((s) => `<li><a href="#/sessions/${s.id}">
+          <span class="date-chip"><b>${new Date(s.session_date + 'T00:00').getDate()}</b>${new Date(s.session_date + 'T00:00').toLocaleString('en-GB', { month: 'short' })}</span>
+          <span><strong>${esc(s.title)}</strong><small>${esc(byId('research_method', s.method_id)?.name)} · ${plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation')}</small></span>
+          ${s.status !== 'completed' ? statusPill(s.status) : ''}</a></li>`).join('')}</ul>`
+          : '<p class="muted pad">No sessions yet.</p>'}
+      </section>
+      <div class="stack">
+        <section class="card">
+          <div class="card-top"><h3>Research questions</h3>${archived ? '' : `<button class="btn btn-small" id="add-question">${icon('plus', 15)} Question</button>`}</div>
+          ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}</span>
+            <button class="icon-btn" data-question="${q.id}" aria-label="Edit question">${icon('pencil', 15)}</button></li>`).join('')}</ol>`
+            : '<p class="muted pad">No questions yet.</p>'}
+        </section>
+        <section class="card">
+          <div class="card-top"><h3>Team and methods</h3></div>
+          <ul class="team">${team.map((r) => `<li>${avatar(r.full_name, 30)}<span><strong>${esc(r.full_name)}</strong><small>${esc(capital(r.role))}</small></span></li>`).join('') || '<li class="muted">Nobody assigned yet.</li>'}</ul>
+          <div class="pills">${methods.map((m) => pill(m.name, 'grey')).join('')}</div>
+        </section>
+      </div>
+    </div>`;
 
-  const addSession = button('New session', { icon: 'plus', size: 'sm', disabled: archived,
-    onClick: ctx.guard(() => openSessionForm(ctx, { projectId: p.id })) });
-
-  const sessionsSection = h('section', { class: 'section', 'aria-labelledby': 'ps-h' },
-    h('div', { class: 'section-head' }, h('h2', { id: 'ps-h' }, `Sessions (${d.sessions.length})`), addSession),
-    d.sessions.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'table' },
-      h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Date'), h('th', { scope: 'col' }, 'Session'), h('th', { scope: 'col', class: 'hide-sm' }, 'Method'),
-        h('th', { scope: 'col', class: 'hide-sm' }, 'Facilitator'), h('th', { scope: 'col', class: 'num' }, 'Observations'))),
-      h('tbody', {}, d.sessions.map((s) => h('tr', {},
-        h('td', {}, formatDate(s.session_date)),
-        h('td', {}, h('a', { class: 'row-title', href: `#/sessions/${s.id}` }, s.title), s.status !== 'completed' ? h('div', {}, statusPill(s.status, toneFor.status[s.status])) : null),
-        h('td', { class: 'hide-sm' }, s.method?.name || '—'),
-        h('td', { class: 'hide-sm' }, s.researcher?.full_name || '—'),
-        h('td', { class: 'num' }, String(s.observationCount)))))))
-      : emptyState({ title: 'No sessions yet', body: archived ? 'This project is archived.' : 'Add a session to start recording observations.' }));
-
-  const questions = h('section', { class: 'section', 'aria-labelledby': 'pq-h' },
-    h('div', { class: 'section-head' }, h('h2', { id: 'pq-h' }, `Research questions (${d.questions.length})`),
-      button('Add question', { icon: 'plus', size: 'sm', disabled: archived, onClick: ctx.guard(() => openQuestionForm(ctx, p.id)) })),
-    d.questions.length ? h('ol', { class: 'panel question-list' }, d.questions.map((q) => h('li', {},
-      h('span', {}, q.question_text),
-      button('', { icon: 'pencil', variant: 'ghost', size: 'sm', 'aria-label': `Edit question: ${q.question_text}`, onClick: ctx.guard(() => openQuestionForm(ctx, p.id, q)) }))))
-      : emptyState({ title: 'No research questions yet', body: 'Questions keep sessions focused on what the team needs to learn.' }));
-
-  const aside = h('aside', { class: 'stack' },
-    h('dl', { class: 'meta' },
-      h('div', {}, h('dt', {}, 'Start date'), h('dd', {}, formatDate(p.start_date))),
-      h('div', {}, h('dt', {}, 'End date'), h('dd', {}, p.end_date ? formatDate(p.end_date) : 'Not set')),
-      h('div', {}, h('dt', {}, 'Methods'), h('dd', {}, d.methods.length ? h('div', { class: 'pills' }, d.methods.map((m) => statusPill(m.name))) : 'None assigned')),
-      h('div', {}, h('dt', {}, 'Team'), h('dd', {}, d.team.length
-        ? h('ul', { class: 'stack', style: 'gap:4px' }, d.team.map((t) => h('li', {}, t.researcher.full_name, h('span', { class: 'muted' }, ` (${t.project_role})`))))
-        : 'Nobody assigned'))),
-    button('Edit methods and team', { icon: 'users', onClick: ctx.guard(() => openTeamForm(ctx, d)) }));
-
-  ctx.view.replaceChildren(head, notice || '',
-    h('div', { class: 'detail-layout' },
-      h('div', {},
-        h('p', { class: 'muted small' }, 'Research objective'),
-        h('p', { class: 'lede' }, p.research_objective),
-        p.description ? h('p', { class: 'prose muted', style: 'margin-top:12px;font-size:1rem' }, p.description) : null,
-        h('section', { class: 'section', 'aria-label': 'Evidence counts' }, counts),
-        questions, sessionsSection),
-      aside));
+  $('#edit').onclick = () => editProject(p);
+  $('#archive').onclick = () => toggleArchive(p);
+  if ($('#add-session')) $('#add-session').onclick = () => editSession(null, p.id);
+  if ($('#add-question')) $('#add-question').onclick = () => editQuestion(p.id);
+  $$('[data-question]').forEach((b) => { b.onclick = () => editQuestion(p.id, byId('research_question', Number(b.dataset.question))); });
 }

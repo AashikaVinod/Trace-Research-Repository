@@ -19,7 +19,7 @@ This is a Database Management Systems course project at demonstration scale: sma
 1. [Features](#features)
 2. [Technology](#technology)
 3. [Project structure](#project-structure)
-4. [Run it locally (demo mode)](#run-it-locally-demo-mode)
+4. [Run it locally (sample mode)](#run-it-locally-sample-mode)
 5. [Connect Supabase](#connect-supabase)
 6. [Security model](#security-model)
 7. [Push to GitHub](#push-to-github)
@@ -42,18 +42,18 @@ This is a Database Management Systems course project at demonstration scale: sma
 | **Participants** | Fictional codes (`P-01`), age bands and segments. No names or contact details. |
 | **Team and methods** | Manage researchers, research methods and participant segments. |
 
-TRACE runs in one of two clearly labelled modes:
+TRACE runs in one of two clearly labelled modes (shown in the dark card at the bottom of the sidebar):
 
-- **Demo mode** is used when `js/config.js` is empty. The sample data loads into the browser and changes are kept in `localStorage`. **Nothing is written to PostgreSQL**, and a banner says so.
+- **Sample mode** is used when `js/config.js` is empty. TRACE opens with a ready-made fictional study (4 projects, 13 sessions, 24 observations and complete evidence chains). Anything you add is kept in this browser's `localStorage`. **Nothing is written to PostgreSQL.** **Reset sample** restores the original data.
 - **Supabase mode** is used when `js/config.js` has your project URL and publishable key. All reads and writes go to PostgreSQL. A write is reported as saved only after PostgreSQL returns the saved row.
 
-TRACE never switches from Supabase mode to demo mode by itself. If the database can't be reached, you see an error and a retry button, never local data pretending to be the database.
+TRACE never switches from Supabase mode to sample mode by itself. If the database can't be reached, you see an error and a retry button, never local data pretending to be the database.
 
 ## Technology
 
-- HTML5, CSS3 and vanilla JavaScript (ES modules). No framework, no build step.
+- HTML5, CSS3 and plain JavaScript loaded with ordinary `<script>` tags. No framework, no modules, no build step, so you can open `index.html` by double-clicking it.
 - **Supabase**: PostgreSQL, the Data API (PostgREST) and Auth. The official client, `@supabase/supabase-js` 2.117.3, is vendored in `vendor/`.
-- **Lucide** icons (a 32-icon subset in `js/icons-data.js`).
+- **Lucide** icons (a 35-icon subset in `js/icons.js`).
 - Self-hosted fonts: Schibsted Grotesk for the interface and Newsreader for research text.
 - **GitHub** for source control and **Vercel** for static hosting.
 - Chart.js is not used. The dashboard shows exact counts, and no chart added information the numbers didn't already give.
@@ -64,58 +64,48 @@ Third-party files and their licences are listed in `vendor/LICENSES.md`.
 
 ```
 trace/
-  index.html                 App shell
+  index.html                 The page shell; loads the scripts below in order
   vercel.json                Security headers for Vercel
   assets/                    Favicon and fonts
   css/
-    tokens.css               Colours, type scale, spacing, evidence-stage colours
-    base.css                 Reset and element defaults
-    layout.css               Sidebar, top bar, page scaffolding
-    components.css           Buttons, forms, tables, dialogs, evidence trail
-    responsive.css           Tablet and phone layouts
+    tokens.css               Colours, fonts, radii; one colour per evidence stage
+    style.css                All styles, grouped: shell, building blocks, pages, forms, small screens
   js/
-    app.js                   Start-up, shell, routes
-    config.js                Public Supabase URL + publishable key (empty = demo mode)
-    supabase-client.js       Config validation (refuses secret keys) and client creation
-    data-access.js           All data operations, used by every page
-    backends/
-      supabase-backend.js    PostgreSQL through the Supabase Data API
-      demo-backend.js        localStorage store enforcing the same rules
-    demo-data.js             Sample data (generated, identical to sql/04)
-    evidence.js              Evidence chain model and graph traversal
-    rules.js                 Validation rules mirroring the SQL constraints
-    errors.js                Readable messages for database errors
-    auth.js                  Sign-in and editor checks
-    router.js                Hash router
-    ui.js / forms.js         Safe DOM helpers, dialogs, toasts, form builder
-    icons-data.js            Lucide icon subset
-    pages/                   dashboard, projects, library, trail, sessions, participants, reference
-  sql/
-    01_schema.sql            Tables
-    02_constraints_and_indexes.sql  Foreign keys, CHECK/UNIQUE, indexes, triggers
-    03_security.sql          Row Level Security, grants, editor allowlist
-    04_seed_data.sql         Fictional sample data (generated)
-    05_demo_queries.sql      Read-only demonstration queries
-    99_uninstall_trace.sql   Removes TRACE (refuses to run unless confirmed)
-  docs/
-    database-design.md       Entities, keys, relationships, normalisation
-    testing-checklist.md     What was tested, how, and what is still unverified
-  tests/                     Unit, SQL and browser tests (not deployed)
-  tools/generate_seed.py     Regenerates sql/04 and js/demo-data.js from one dataset
+    config.js                Supabase URL + publishable key (empty = sample mode)
+    icons.js                 Lucide icon shapes
+    sample-data.js           The fictional sample study (generated, identical to sql/04)
+    helpers.js               esc() for safe HTML, icons, dates, toasts, modals, the form builder
+    db.js                    ALL data access: loadAll(), save functions, links, sign-in
+    editors.js               Every add/edit form (project, session, participant, records)
+    pages/                   home, projects, library, trail, sessions, people
+    app.js                   Start-up, sidebar/top bar, and which page to show for each URL
+  sql/                       01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 99 uninstall
+  docs/                      database-design.md, testing-checklist.md
+  tests/                     SQL tests and the browser test (not deployed)
+  tools/generate_seed.py     Regenerates sql/04 and js/sample-data.js from one dataset
   vendor/                    supabase-js browser build and licences
 ```
 
-## Run it locally (demo mode)
+### How the code fits together
 
-ES modules don't load from `file://`, so serve the folder over HTTP. Either of these works:
+1. `db.js` → `loadAll()` reads every table into one object, `data` (for example `data.research_project`).
+2. Each page in `js/pages/` is one function, such as `pageProjects()`. It builds HTML from `data` with template strings, then attaches click handlers. Every value from the database goes through `esc()` so typed text can't become HTML.
+3. The forms in `editors.js` call a save function in `db.js`, such as `saveRecord()`. That writes one change, reloads `data`, and the page is drawn again.
+
+To add a new page: write `function pageSomething()` in a new file, add a `<script>` tag for it in `index.html`, and add the route to `ROUTES` in `app.js`.
+
+## Run it locally (sample mode)
+
+Double-click `index.html`. It opens in your browser with the sample study already loaded.
+
+You can also serve the folder, which is closer to how Vercel serves it:
 
 ```bash
 cd trace
-python3 -m http.server 8080
-# or: node tests/serve.mjs 8080
+python3 -m http.server 8080      # then open http://localhost:8080
 ```
 
-Then open <http://localhost:8080>. With `js/config.js` empty, TRACE starts in demo mode with the sample data. **Reset demo data** in the banner restores the original sample.
+To demo adding things, click **New** in the top bar. You can add a project, session, participant or any evidence record. On a record's page, the **Leads to** box adds the next step of the chain with the link already ticked. Afterwards, **Evidence trail** shows the whole story.
 
 ## Connect Supabase
 
@@ -156,8 +146,8 @@ None of these files drops or overwrites anything. `99_uninstall_trace.sql` is th
 Find the **Project URL** and **Publishable key** under **Project Settings → API Keys** and **Data API**. The legacy "anon public" key also works. Put both in `js/config.js`:
 
 ```js
-export const SUPABASE_URL = 'https://abcdefghijkl.supabase.co';
-export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_...';
+const SUPABASE_URL = 'https://abcdefghijkl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_...';
 ```
 
 **Public or secret?**
@@ -171,7 +161,9 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_...';
 
 Anything delivered to a browser can be read by anyone, so TRACE doesn't pretend these values are hidden. It refuses to start if `js/config.js` contains a secret or `service_role` key, and shows a configuration error instead.
 
-Reload the app. The top bar should say **Supabase: read-only**. Choose **Sign in**, use your editor account, and it changes to **Supabase: editing**.
+Reload the app. The sidebar card should say **Connected to Supabase: Viewing only**. Choose **Sign in** in the top bar, use your editor account, and it changes to **Editing as you@example.com**.
+
+If the home page says your database is empty, run `sql/04_seed_data.sql`.
 
 ## Security model
 
@@ -187,7 +179,7 @@ Defined in `sql/03_security.sql` and tested in `tests/sql/10_integrity_and_secur
 - Row Level Security is enabled on all 22 tables. Every table's grants are revoked first, then granted exactly as needed.
 - `trace_editor` has RLS enabled and no policies, so it can't be read through the API. The `trace_is_editor()` function only answers "is the caller an editor?".
 - **Do not store real participant data in this demo.** Public read access is appropriate only because the data is fictional. For real research, change the `select` policies to require signing in.
-- User text is always inserted with `textContent`, never `innerHTML`. `vercel.json` adds a Content Security Policy, which only allows scripts from the site itself and connections to `*.supabase.co`.
+- Every value shown on screen goes through `esc()`, which escapes HTML, so typed text can't inject markup. `vercel.json` adds a Content Security Policy, which only allows scripts from the site itself and connections to `*.supabase.co`.
 
 ## Push to GitHub
 
@@ -211,7 +203,7 @@ Before every push, `git status` should show no `.env` files or keys. The `.gitig
 2. Framework preset: **Other**. Leave the build command empty and the output directory at its default (the repository root). TRACE is plain static files, so there is nothing to build.
 3. **No environment variables are needed.** The two public values live in `js/config.js`. Don't add secrets to Vercel for this app.
 4. Deploy, then open the `*.vercel.app` URL and check:
-   - the top bar shows **Supabase: read-only** and the dashboard shows your data,
+   - the sidebar card says **Connected to Supabase** and the home page shows your data,
    - after signing in, you can create a project, reload, and still see it,
    - the browser console shows no errors.
 5. TRACE uses email and password sign-in only, so no redirect URLs are required. Optionally, set **Authentication → URL Configuration → Site URL** to your Vercel URL.
@@ -226,12 +218,11 @@ Full details and results: `docs/testing-checklist.md`.
 
 | Suite | Command | Needs |
 | --- | --- | --- |
-| Unit tests (data layer, evidence graph, config guard, seed integrity) | `node --test tests/unit.test.mjs` | Node 18+ |
-| SQL integrity and RLS tests (29) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Browser workflow test (19–20 steps) | `node tests/serve.mjs 8080 &` then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
-| Supabase-mode browser test against a local replica | `POSTGREST_BIN=/path/to/postgrest tests/supabase-local/run-e2e.sh` | PostgreSQL, PostgREST, Playwright |
+| SQL integrity and security tests (29) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
+| Browser workflow test (15 steps; 16 with sign-in) | `node tests/serve.mjs 8080`, then in another terminal `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
+| Same test against a local Supabase replica | `POSTGREST_BIN=/path/to/postgrest tests/supabase-local/run-e2e.sh` | PostgreSQL, PostgREST, Playwright |
 
-`tests/e2e.mjs` also runs against your real deployment. It signs in when you set `BASE`, `TRACE_E2E_EMAIL` and `TRACE_E2E_PASSWORD`, and it creates clearly named `E2E …` records.
+`tests/e2e.mjs` also works against your real deployment. Set `BASE`, `TRACE_E2E_EMAIL` and `TRACE_E2E_PASSWORD`; it creates records named `Demo project …`, `Finding …` and so on.
 
 ## Troubleshooting
 
@@ -241,12 +232,12 @@ Full details and results: `docs/testing-checklist.md`.
 | "The TRACE tables were not found" | The SQL files weren't run, or the API schema cache is stale. Run `notify pgrst, 'reload schema';` in the SQL Editor. |
 | Signed in but still "read-only" | Your user isn't in `trace_editor`. Run the insert from step 3. |
 | "Couldn't reach Supabase" | Network problem, or the project is paused. Free projects pause when inactive; restore it from the dashboard. |
-| Blank page when opening `index.html` directly | ES modules need HTTP. Use a local server, as shown above. |
+| Page stuck on "Loading TRACE…" | Open the browser console (F12) and check for a red error. Usually one of the scripts is missing or `js/config.js` has a typo. |
 
 ## Known limitations
 
 - **Real Supabase and Vercel were not reachable from the environment that built TRACE.** Supabase mode was tested against a local replica: the same SQL files on PostgreSQL 16, with PostgREST 12.2.3 serving the API. Sign-in was tested against a **mock** of Supabase Auth. Verify sign-in and one write on your real project; see `docs/testing-checklist.md`.
-- Search and filtering run in the browser over fully loaded tables. That's fine for demonstration-sized data. The Data API returns at most 1,000 rows per request by default, so large datasets would need server-side search and pagination.
+- TRACE loads every table at once and searches in the browser. This keeps the code simple and works for demo-sized data. That's fine for demonstration-sized data. The Data API returns at most 1,000 rows per request by default, so large datasets would need server-side search and pagination.
 - Saving a record and its links takes two requests. If the links fail after the record is saved, TRACE says exactly that rather than claiming success. A database function would make this atomic.
 - One editor role, no per-project permissions, no real-time collaboration, no file uploads. These were deliberately left out of scope.
 - Records can't be deleted through the app. Projects are archived, and evidence links can be removed by editing a record.
