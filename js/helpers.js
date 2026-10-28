@@ -231,3 +231,9 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
     $('.input', form)?.focus();
   });
 }
+
+// A quiet line of details, e.g. meta('Project', '2 sessions').
+// The dots between items come from CSS, so empty parts disappear.
+function meta(...parts) {
+  return `<span class="meta">${parts.filter(Boolean).map((p) => `<span>${p}</span>`).join('')}</span>`;
+}

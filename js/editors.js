@@ -176,18 +176,24 @@ async function editSimple(table, row = null) {
 
 // The "+ New" button in the top bar.
 function openNewMenu() {
-  const items = [
-    ['project', 'folder-kanban', 'Research project', 'Start a new study'],
-    ['session', 'calendar-days', 'Session', 'An interview, test or study'],
-    ['participant', 'user-plus', 'Participant', 'A coded, anonymous participant'],
-    ...STAGES.map((s) => [s.type, 'file-text', s.label, `Evidence step ${s.step} of 5`]),
+  const study = [
+    ['project', 'folder-kanban', 'Project', 'Start a new study'],
+    ['session', 'calendar-days', 'Session', 'An interview or test'],
+    ['participant', 'user-plus', 'Participant', 'Anonymous, by code'],
   ];
-  const { dialog, close } = openModal({
-    title: 'What would you like to add?',
-    body: `<div class="new-menu">${items.map(([key, ic, label, hint]) => `
+  const hints = { observation: 'What someone did or said', finding: 'A pattern across sessions', insight: 'Why the pattern matters', recommendation: 'What should change', design_decision: 'What the team decided' };
+  const evidence = STAGES.map((s) => [s.type, 'file-text', s.label, hints[s.type]]);
+  const item = ([key, ic, label, hint]) => `
       <button class="new-item ${STAGE[key] ? `stage-${key}` : ''}" data-new="${key}">
         <span class="new-icon">${icon(ic)}</span><span><strong>${esc(label)}</strong><small>${esc(hint)}</small></span>
-      </button>`).join('')}</div>`,
+      </button>`;
+  const { dialog, close } = openModal({
+    title: 'Add to TRACE',
+    wide: true,
+    body: `<div class="new-menu">
+      <p class="eyebrow new-menu-label">Study</p>${study.map(item).join('')}
+      <p class="eyebrow new-menu-label">Evidence</p>${evidence.map(item).join('')}
+    </div>`,
   });
   dialog.addEventListener('click', (e) => {
     const button = e.target.closest('[data-new]');

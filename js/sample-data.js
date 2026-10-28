@@ -5,32 +5,32 @@ const SAMPLE_DATA = {
  "researcher": [
   {
    "id": 1,
-   "full_name": "Mira Okafor",
-   "email": "mira.okafor@example.org",
+   "full_name": "Ananya Kulkarni",
+   "email": "ananya.kulkarni@example.org",
    "role_title": "Lead UX researcher",
    "created_at": "2026-05-01T10:00:00+00:00",
    "updated_at": "2026-05-01T10:00:00+00:00"
   },
   {
    "id": 2,
-   "full_name": "Tomás Reyes",
-   "email": "tomas.reyes@example.org",
+   "full_name": "Rohan Mehta",
+   "email": "rohan.mehta@example.org",
    "role_title": "Product designer",
    "created_at": "2026-05-01T10:00:00+00:00",
    "updated_at": "2026-05-01T10:00:00+00:00"
   },
   {
    "id": 3,
-   "full_name": "Hana Sato",
-   "email": "hana.sato@example.org",
+   "full_name": "Kavya Nair",
+   "email": "kavya.nair@example.org",
    "role_title": "UX researcher",
    "created_at": "2026-05-01T10:00:00+00:00",
    "updated_at": "2026-05-01T10:00:00+00:00"
   },
   {
    "id": 4,
-   "full_name": "Isaac Lindqvist",
-   "email": "isaac.lindqvist@example.org",
+   "full_name": "Arjun Desai",
+   "email": "arjun.desai@example.org",
    "role_title": "Content designer",
    "created_at": "2026-05-01T10:00:00+00:00",
    "updated_at": "2026-05-01T10:00:00+00:00"
@@ -899,7 +899,7 @@ const SAMPLE_DATA = {
    "id": 5,
    "session_id": 3,
    "title": "Left the app to find a document",
-   "description": "P-03 switched to their email to search for a council tax letter, then came back to find the form had reset.",
+   "description": "P-03 switched to their email to search for an electricity bill, then came back to find the form had reset.",
    "sentiment": "negative",
    "created_at": "2026-08-12T15:00:00+00:00",
    "updated_at": "2026-08-12T15:00:00+00:00"

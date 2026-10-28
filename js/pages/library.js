@@ -68,9 +68,7 @@ function docCard(r) {
     </div>
     <div class="doc-info">
       <strong>${esc(r.title)}</strong>
-      <small>${esc(project?.title || '')}</small>
-      <span class="doc-links">${r.type !== 'observation' ? `${icon('link-2', 13)} ${ups} in` : ''}${r.type !== 'design_decision' ? ` ${icon('arrow-right', 13)} ${downs} out` : ''}
-        ${gap ? `<em>${gap}</em>` : ''}</span>
+      ${meta(esc(project?.title || ''), gap ? `<span class="gap">${gap}</span>` : r.type === 'observation' ? `Used in ${plural(downs, 'finding')}` : plural(ups, 'source'))}
     </div>
   </a>`;
 }
@@ -97,7 +95,7 @@ function pageRecord(params) {
 
   const linkList = (items) => `<div class="link-list">${items.map((x) => `
     <a class="link-item stage-${x.type}" href="#/record/${x.type}/${x.id}"><span class="dot"></span>
-      <span><strong>${esc(x.title)}</strong><small>${esc(shorten(x.description, 90))}</small></span></a>`).join('')}</div>`;
+      <span><strong>${esc(x.title)}</strong><small>${esc(shorten(x.description, 110))}</small></span></a>`).join('')}</div>`;
 
   view.innerHTML = `
     <div class="record-layout">
@@ -120,10 +118,10 @@ function pageRecord(params) {
     </div>
     <div class="two-col">
       ${prev ? `<section class="card"><div class="card-top"><h3>Built on (${ups.length})</h3></div>
-        ${ups.length ? linkList(ups) : `<p class="muted pad">No ${prev.plural.toLowerCase()} support this yet. Use “Edit and link” to connect some.</p>`}</section>` : ''}
+        ${ups.length ? linkList(ups) : `<p class="quiet">No ${prev.plural.toLowerCase()} support this yet. Use “Edit and link” to connect some.</p>`}</section>` : ''}
       ${next ? `<section class="card"><div class="card-top"><h3>Leads to (${downs.length})</h3>
         ${project?.archived_at ? '' : `<button class="btn btn-small" id="add-next">${icon('plus', 15)} ${next.label}</button>`}</div>
-        ${downs.length ? linkList(downs) : `<p class="muted pad">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
+        ${downs.length ? linkList(downs) : `<p class="quiet">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
     </div>`;
 
   $('#edit').onclick = () => editRecord(type, r);

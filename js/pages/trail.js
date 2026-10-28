@@ -34,13 +34,14 @@ function pageTrail(params, query) {
         <section class="card"><div class="card-top"><h3>Decisions with the full story</h3></div>
           ${complete.length ? `<ul class="rows">${complete.map(({ d, trail }) => `<li><a href="#/trail/design_decision/${d.id}">
             <span class="dot stage-design_decision"></span>
-            <span><strong>${esc(d.title)}</strong><small>${plural(trail.byStage.observation.length, 'observation')} behind it</small></span>
-            ${icon('chevron-right', 16)}</a></li>`).join('')}</ul>` : '<p class="muted pad">No decision is linked all the way back to observations yet.</p>'}
+            <span class="row-text"><strong>${esc(d.title)}</strong>${meta(plural(trail.byStage.observation.length, 'observation') + ' behind it', esc(byId('research_project', d.project_id)?.title))}</span>
+            <span class="chev">${icon('chevron-right', 18)}</span></a></li>`).join('')}</ul>` : '<p class="quiet">No decision is linked all the way back to observations yet.</p>'}
         </section>
-        <section class="card"><div class="card-top"><h3>Gaps in the evidence</h3></div>
+        <section class="card"><div class="card-top"><h3>Gaps to close</h3></div>
           <ul class="rows">${gaps.map(({ s, items }) => `<li><a href="${items[0] ? `#/trail/${s.type}/${items[0].id}` : '#/trail'}">
             <span class="dot stage-${s.type}"></span>
-            <span><strong>${items.length} ${s.plural.toLowerCase()} not used yet</strong><small>${items.length ? esc(shorten(items.map((i) => i.title).join(', '), 90)) : 'All connected'}</small></span></a></li>`).join('')}</ul>
+            <span class="row-text"><strong>${items.length} ${s.plural.toLowerCase()} not used yet</strong>${meta(items.length ? esc(shorten(items[0].title, 60)) + (items.length > 1 ? ` and ${items.length - 1} more` : '') : 'All connected')}</span>
+            <span class="chev">${icon('chevron-right', 18)}</span></a></li>`).join('')}</ul>
         </section>
       </div>`;
     hookPicker();
@@ -66,7 +67,7 @@ function pageTrail(params, query) {
           <h2 class="trail-head stage-${s.type}"><i></i>${s.plural}<span>${trail.byStage[s.type].length}</span></h2>
           ${trail.byStage[s.type].map((r) => `<a class="trail-card stage-${s.type} ${`${s.type}:${r.id}` === focusKey ? 'is-focus' : ''}"
               href="#/trail/${s.type}/${r.id}${projectId ? `?project=${projectId}` : ''}" data-key="${s.type}:${r.id}">
-              <strong>${esc(r.title)}</strong><small>${esc(shorten(r.description, 70))}</small></a>`).join('')
+              <strong>${esc(r.title)}</strong></a>`).join('')
             || `<p class="trail-gap">None yet</p>`}
         </section>`).join('')}
       </div>

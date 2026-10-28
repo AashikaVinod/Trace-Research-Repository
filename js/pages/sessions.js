@@ -18,7 +18,7 @@ function pageSessions(params, query) {
       <span class="count" id="count"></span>
     </div>
     <div class="card table-card"><table class="table">
-      <thead><tr><th>Date</th><th>Session</th><th class="hide-sm">Method</th><th class="hide-sm">Participants</th><th>Notes</th><th>Status</th></tr></thead>
+      <thead><tr><th>Date</th><th>Session</th><th class="hide-sm">Method</th><th class="hide-sm">Participants</th><th class="hide-sm">Evidence</th><th>Status</th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>`;
   $('#project').value = String(projectId);
@@ -34,10 +34,10 @@ function pageSessions(params, query) {
     $('#count').textContent = plural(list.length, 'session');
     $('#rows').innerHTML = list.map((s) => `<tr>
       <td class="nowrap">${formatDate(s.session_date)}</td>
-      <td><a class="strong-link" href="#/sessions/${s.id}">${esc(s.title)}</a><small class="block muted">${esc(byId('research_project', s.project_id)?.title)}</small></td>
+      <td><a class="strong-link" href="#/sessions/${s.id}">${esc(s.title)}</a><small>${esc(byId('research_project', s.project_id)?.title)}</small></td>
       <td class="hide-sm">${esc(byId('research_method', s.method_id)?.name)}</td>
       <td class="hide-sm">${esc(codes(s).join(', ') || '—')}</td>
-      <td>${plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation')}</td>
+      <td class="hide-sm">${plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation')}</td>
       <td>${statusPill(s.status)}</td></tr>`).join('') || `<tr><td colspan="6" class="muted">No sessions match.</td></tr>`;
   }
 
@@ -59,7 +59,7 @@ function pageSession(params) {
 
   view.innerHTML = `
     <section class="card project-head">
-      <div class="card-top">${statusPill(s.status)}<span class="muted small">${formatDate(s.session_date)}${s.duration_minutes ? ` · ${s.duration_minutes} min` : ''}</span></div>
+      <div class="card-top" style="justify-content:flex-start">${statusPill(s.status)}${meta(formatDate(s.session_date), s.duration_minutes ? `${s.duration_minutes} minutes` : '')}</div>
       <h1>${esc(s.title)}</h1>
       <p class="muted">${esc(byId('research_method', s.method_id)?.name)} with ${esc(byId('researcher', s.researcher_id)?.full_name)}, for
         <a href="#/projects/${project.id}">${esc(project.title)}</a></p>
@@ -74,17 +74,17 @@ function pageSession(params) {
         ${observations.length ? `<div class="link-list">${observations.map((o) => `
           <a class="link-item stage-observation" href="#/record/observation/${o.id}"><span class="dot"></span>
             <span><strong>${esc(o.title)}</strong><small>${esc(o.description)}</small>
-            <small>${statusPill(o.sentiment)} ${downstream('observation', o.id).length ? `Used in ${plural(downstream('observation', o.id).length, 'finding')}` : '<em class="gap">Not used in a finding yet</em>'}</small></span></a>`).join('')}</div>`
-          : `<p class="muted pad">No observations yet. What did the participant do or say?</p>`}
+            <small>${statusPill(o.sentiment)} ${downstream('observation', o.id).length ? `Used in ${plural(downstream('observation', o.id).length, 'finding')}` : '<span class="gap">Not used in a finding yet</span>'}</small></span></a>`).join('')}</div>`
+          : `<p class="quiet">No observations yet. What did the participant do or say?</p>`}
       </section>
       <div class="stack">
         <section class="card"><div class="card-top"><h3>Participants</h3></div>
-          <div class="pills pad">${people.map((p) => `<a href="#/sessions?participant=${p.id}">${pill(p.participant_code, 'purple')}</a>`).join('') || '<span class="muted">None added.</span>'}</div>
+          <div class="pills">${people.map((p) => `<a href="#/sessions?participant=${p.id}">${pill(p.participant_code, 'purple')}</a>`).join('') || '<span class="muted">None added.</span>'}</div>
         </section>
         <section class="card"><div class="card-top"><h3>Questions covered</h3></div>
-          ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}</span></li>`).join('')}</ol>` : '<p class="muted pad">None linked.</p>'}
+          ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}</span></li>`).join('')}</ol>` : '<p class="quiet">None linked.</p>'}
         </section>
-        ${s.notes ? `<section class="card"><div class="card-top"><h3>Notes</h3></div><p class="pad">${esc(s.notes)}</p></section>` : ''}
+        ${s.notes ? `<section class="card"><div class="card-top"><h3>Notes</h3></div><p class="muted">${esc(s.notes)}</p></section>` : ''}
       </div>
     </div>`;
 

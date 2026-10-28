@@ -44,7 +44,7 @@ This is a Database Management Systems course project at demonstration scale: sma
 
 TRACE runs in one of two clearly labelled modes (shown in the dark card at the bottom of the sidebar):
 
-- **Sample mode** is used when `js/config.js` is empty. TRACE opens with a ready-made fictional study (4 projects, 13 sessions, 24 observations and complete evidence chains). Anything you add is kept in this browser's `localStorage`. **Nothing is written to PostgreSQL.** **Reset sample** restores the original data.
+- **Sample mode** is used when `js/config.js` is empty. TRACE opens with a ready-made fictional study (4 projects, a research team of four, 13 sessions, 24 observations and complete evidence chains). Anything you add is kept in this browser's `localStorage`. **Nothing is written to PostgreSQL.** **Reset sample** restores the original data.
 - **Supabase mode** is used when `js/config.js` has your project URL and publishable key. All reads and writes go to PostgreSQL. A write is reported as saved only after PostgreSQL returns the saved row.
 
 TRACE never switches from Supabase mode to sample mode by itself. If the database can't be reached, you see an error and a retry button, never local data pretending to be the database.

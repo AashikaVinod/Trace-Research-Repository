@@ -17,10 +17,10 @@ def ts(day, hour=10):
     return f"{day}T{hour:02d}:00:00+00:00"
 
 researcher = [
-    dict(id=1, full_name="Mira Okafor", email="mira.okafor@example.org", role_title="Lead UX researcher", created_at=ts("2026-05-01")),
-    dict(id=2, full_name="Tomás Reyes", email="tomas.reyes@example.org", role_title="Product designer", created_at=ts("2026-05-01")),
-    dict(id=3, full_name="Hana Sato", email="hana.sato@example.org", role_title="UX researcher", created_at=ts("2026-05-01")),
-    dict(id=4, full_name="Isaac Lindqvist", email="isaac.lindqvist@example.org", role_title="Content designer", created_at=ts("2026-05-01")),
+    dict(id=1, full_name="Ananya Kulkarni", email="ananya.kulkarni@example.org", role_title="Lead UX researcher", created_at=ts("2026-05-01")),
+    dict(id=2, full_name="Rohan Mehta", email="rohan.mehta@example.org", role_title="Product designer", created_at=ts("2026-05-01")),
+    dict(id=3, full_name="Kavya Nair", email="kavya.nair@example.org", role_title="UX researcher", created_at=ts("2026-05-01")),
+    dict(id=4, full_name="Arjun Desai", email="arjun.desai@example.org", role_title="Content designer", created_at=ts("2026-05-01")),
 ]
 
 research_method = [
@@ -128,7 +128,7 @@ _obs = [
     (2, 1, "Found the step counter reassuring", "P-01 pointed at the step counter and said it helped to know there were only five steps.", "positive"),
     (3, 2, "Unsure which documents count", "P-02 asked aloud whether a statement from another bank would be accepted. The screen did not say.", "negative"),
     (4, 2, "Hesitated at the camera permission", "P-02 read the camera permission prompt twice and asked why the app needed it before tapping Allow.", "negative"),
-    (5, 3, "Left the app to find a document", "P-03 switched to their email to search for a council tax letter, then came back to find the form had reset.", "negative"),
+    (5, 3, "Left the app to find a document", "P-03 switched to their email to search for an electricity bill, then came back to find the form had reset.", "negative"),
     (6, 3, "Identity check was quick once started", "P-03 finished the selfie check in under a minute and said it was easier than expected.", "positive"),
     (7, 4, "Expected a checklist before starting", "P-04 said their previous bank emailed a list of what to prepare, and they wanted the same here.", "neutral"),
     (8, 4, "Enlarged text cut off button labels", "P-04 uses enlarged system text. The Continue button label was truncated on two screens.", "negative"),

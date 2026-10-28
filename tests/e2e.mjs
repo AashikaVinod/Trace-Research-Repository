@@ -61,7 +61,7 @@ await step('create a project', async () => {
   await page.locator('#add').click();
   await fill('Project title', project);
   await fill('Research objective', 'Show the whole TRACE workflow live in class.');
-  await tick('Hana Sato');
+  await tick('Kavya Nair');
   await save();
   await page.waitForSelector(`h1:has-text("${project}")`);
 });
@@ -74,7 +74,7 @@ await step('add a question and a session', async () => {
   await page.locator('#add-session').click();
   await fill('Session title', `Usability test ${RUN}`);
   await choose('Method', 'Moderated usability test');
-  await choose('Facilitator', 'Hana Sato');
+  await choose('Facilitator', 'Kavya Nair');
   await tick('P-01');
   await tick(`run ${RUN}`);
   await save();

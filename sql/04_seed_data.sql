@@ -16,10 +16,10 @@ end
 $$;
 
 insert into public.researcher (id, full_name, email, role_title, created_at, updated_at) values
-  (1, 'Mira Okafor', 'mira.okafor@example.org', 'Lead UX researcher', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
-  (2, 'Tomás Reyes', 'tomas.reyes@example.org', 'Product designer', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
-  (3, 'Hana Sato', 'hana.sato@example.org', 'UX researcher', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
-  (4, 'Isaac Lindqvist', 'isaac.lindqvist@example.org', 'Content designer', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00');
+  (1, 'Ananya Kulkarni', 'ananya.kulkarni@example.org', 'Lead UX researcher', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
+  (2, 'Rohan Mehta', 'rohan.mehta@example.org', 'Product designer', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
+  (3, 'Kavya Nair', 'kavya.nair@example.org', 'UX researcher', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
+  (4, 'Arjun Desai', 'arjun.desai@example.org', 'Content designer', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00');
 
 insert into public.segment (id, name, description, created_at, updated_at) values
   (1, 'First-time mobile bankers', 'Opening their first account through an app.', '2026-05-01T10:00:00+00:00', '2026-05-01T10:00:00+00:00'),
@@ -165,7 +165,7 @@ insert into public.observation (id, session_id, title, description, sentiment, c
   (2, 1, 'Found the step counter reassuring', 'P-01 pointed at the step counter and said it helped to know there were only five steps.', 'positive', '2026-08-10T15:00:00+00:00', '2026-08-10T15:00:00+00:00'),
   (3, 2, 'Unsure which documents count', 'P-02 asked aloud whether a statement from another bank would be accepted. The screen did not say.', 'negative', '2026-08-11T15:00:00+00:00', '2026-08-11T15:00:00+00:00'),
   (4, 2, 'Hesitated at the camera permission', 'P-02 read the camera permission prompt twice and asked why the app needed it before tapping Allow.', 'negative', '2026-08-11T15:00:00+00:00', '2026-08-11T15:00:00+00:00'),
-  (5, 3, 'Left the app to find a document', 'P-03 switched to their email to search for a council tax letter, then came back to find the form had reset.', 'negative', '2026-08-12T15:00:00+00:00', '2026-08-12T15:00:00+00:00'),
+  (5, 3, 'Left the app to find a document', 'P-03 switched to their email to search for an electricity bill, then came back to find the form had reset.', 'negative', '2026-08-12T15:00:00+00:00', '2026-08-12T15:00:00+00:00'),
   (6, 3, 'Identity check was quick once started', 'P-03 finished the selfie check in under a minute and said it was easier than expected.', 'positive', '2026-08-12T15:00:00+00:00', '2026-08-12T15:00:00+00:00'),
   (7, 4, 'Expected a checklist before starting', 'P-04 said their previous bank emailed a list of what to prepare, and they wanted the same here.', 'neutral', '2026-08-14T15:00:00+00:00', '2026-08-14T15:00:00+00:00'),
   (8, 4, 'Enlarged text cut off button labels', 'P-04 uses enlarged system text. The Continue button label was truncated on two screens.', 'negative', '2026-08-14T15:00:00+00:00', '2026-08-14T15:00:00+00:00'),

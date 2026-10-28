@@ -42,10 +42,10 @@ function projectCard(p) {
     <div class="card-top">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div>
     <h3>${esc(p.title)}</h3>
     <p class="muted">${esc(shorten(p.research_objective, 110))}</p>
-    <div class="mini-chain">${STAGES.map((s) => `<span class="stage-${s.type}" title="${counts[s.type]} ${s.plural.toLowerCase()}">${counts[s.type]}</span>`).join('')}</div>
+    <div class="mini-chain" aria-label="Evidence at each stage">${STAGES.map((s) => `<span class="stage-${s.type}" title="${s.plural}">${counts[s.type]}</span>`).join('')}</div>
     <div class="card-foot">
-      ${lead ? `${avatar(lead.full_name, 26)}<span class="small">${esc(lead.full_name)}</span>` : '<span class="small muted">No lead</span>'}
-      <span class="small muted push">${plural(counts.sessions, 'session')}</span>
+      ${lead ? avatar(lead.full_name, 30) : ''}
+      ${meta(lead ? esc(lead.full_name) : 'No lead yet', plural(counts.sessions, 'session'))}
     </div>
   </a>`;
 }
@@ -64,7 +64,7 @@ function pageProject(params) {
   view.innerHTML = `
     ${archived ? `<div class="notice">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
     <section class="card project-head">
-      <div class="card-top">${statusPill(p.status)}<span class="muted small">${formatDate(p.start_date)}${p.end_date ? ` – ${formatDate(p.end_date)}` : ''}</span></div>
+      <div class="card-top" style="justify-content:flex-start">${statusPill(p.status)}${meta(`Started ${formatDate(p.start_date)}`, p.end_date ? `Ended ${formatDate(p.end_date)}` : '', projectLead(p.id) ? `Led by ${esc(projectLead(p.id).full_name)}` : '')}</div>
       <h1>${esc(p.title)}</h1>
       <p class="lede">${esc(p.research_objective)}</p>
       ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
@@ -84,21 +84,21 @@ function pageProject(params) {
         <div class="card-top"><h3>Sessions (${sessions.length})</h3>${archived ? '' : `<button class="btn btn-small" id="add-session">${icon('plus', 15)} Session</button>`}</div>
         ${sessions.length ? `<ul class="rows">${sessions.map((s) => `<li><a href="#/sessions/${s.id}">
           <span class="date-chip"><b>${new Date(s.session_date + 'T00:00').getDate()}</b>${new Date(s.session_date + 'T00:00').toLocaleString('en-GB', { month: 'short' })}</span>
-          <span><strong>${esc(s.title)}</strong><small>${esc(byId('research_method', s.method_id)?.name)} · ${plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation')}</small></span>
-          ${s.status !== 'completed' ? statusPill(s.status) : ''}</a></li>`).join('')}</ul>`
-          : '<p class="muted pad">No sessions yet.</p>'}
+          <span class="row-text"><strong>${esc(s.title)}</strong>${meta(esc(byId('research_method', s.method_id)?.name), plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation'))}</span>
+          ${s.status !== 'completed' ? statusPill(s.status) : `<span class="chev">${icon('chevron-right', 18)}</span>`}</a></li>`).join('')}</ul>`
+          : '<p class="quiet">No sessions yet.</p>'}
       </section>
       <div class="stack">
         <section class="card">
           <div class="card-top"><h3>Research questions</h3>${archived ? '' : `<button class="btn btn-small" id="add-question">${icon('plus', 15)} Question</button>`}</div>
           ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}</span>
             <button class="icon-btn" data-question="${q.id}" aria-label="Edit question">${icon('pencil', 15)}</button></li>`).join('')}</ol>`
-            : '<p class="muted pad">No questions yet.</p>'}
+            : '<p class="quiet">No questions yet.</p>'}
         </section>
         <section class="card">
-          <div class="card-top"><h3>Team and methods</h3></div>
-          <ul class="team">${team.map((r) => `<li>${avatar(r.full_name, 30)}<span><strong>${esc(r.full_name)}</strong><small>${esc(capital(r.role))}</small></span></li>`).join('') || '<li class="muted">Nobody assigned yet.</li>'}</ul>
-          <div class="pills">${methods.map((m) => pill(m.name, 'grey')).join('')}</div>
+          <div class="card-top"><h3>Team</h3></div>
+          <ul class="team">${team.map((r) => `<li>${avatar(r.full_name, 36)}<span><strong>${esc(r.full_name)}</strong><small>${esc(capital(r.role))}</small></span></li>`).join('') || '<li class="quiet">Nobody assigned yet.</li>'}</ul>
+          <div class="team-methods"><p class="eyebrow">Methods</p><div class="pills" style="margin-top:12px">${methods.map((m) => pill(m.name, 'grey')).join('') || '<span class="quiet">None yet</span>'}</div></div>
         </section>
       </div>
     </div>`;

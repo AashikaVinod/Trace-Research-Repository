@@ -15,7 +15,7 @@ The build environment could not reach `supabase.co` or `vercel.com`. Supabase mo
 
 The browser was headless Chromium running the vendored `supabase-js` 2.117.3, with the production Content-Security-Policy from `vercel.json` applied.
 
-## Results (28 October 2026, after the redesign)
+## Results (28 October 2026, after the UI audit and redesign)
 
 | Suite | Result |
 | --- | --- |

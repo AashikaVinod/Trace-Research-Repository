@@ -25,7 +25,7 @@ function pagePeople() {
     </section>
 
     <div class="three-col">
-      ${smallList('Research team', 'researcher', data.researcher, (r) => `${avatar(r.full_name, 30)}<span><strong>${esc(r.full_name)}</strong><small>${esc(r.role_title || '')}</small></span>`)}
+      ${smallList('Research team', 'researcher', data.researcher, (r) => `${avatar(r.full_name, 36)}<span><strong>${esc(r.full_name)}</strong><small>${esc(r.role_title || '')}</small></span>`)}
       ${smallList('Methods', 'research_method', data.research_method, (m) => `<span><strong>${esc(m.name)}</strong><small>${esc(shorten(m.description, 60))}</small></span>`)}
       ${smallList('Segments', 'segment', data.segment, (g) => `<span><strong>${esc(g.name)}</strong><small>${esc(shorten(g.description, 60))}</small></span>`)}
     </div>`;

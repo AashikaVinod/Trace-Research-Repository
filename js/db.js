@@ -103,7 +103,7 @@ async function loadAll() {
 // Sample mode storage (localStorage)
 // -------------------------------------------------------------------
 
-const SAMPLE_KEY = 'trace.sample.v2';
+const SAMPLE_KEY = 'trace.sample.v3'; // bump this when the sample data changes
 let sample = null;
 
 function loadSample() {

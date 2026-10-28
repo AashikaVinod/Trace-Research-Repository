@@ -1,51 +1,68 @@
-/* TRACE design tokens: change colours, fonts and spacing here. */
+/* ================================================================
+   TRACE design tokens. Change colours, type and spacing here.
+   ================================================================ */
 @font-face { font-family: 'Schibsted Grotesk'; src: url('../assets/fonts/schibsted-grotesk-latin-wght.woff2') format('woff2'); font-weight: 400 900; font-display: swap; }
 @font-face { font-family: 'Newsreader'; src: url('../assets/fonts/newsreader-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
 
 :root {
-  /* Canvas behind the floating app window */
-  --sky: #dde7f7;
-  --peach: #f8dfd0;
+  /* Canvas around the app window */
   --canvas: #eef0f4;
+  --sky: #dfe6fb;
+  --blush: #fbe5d9;
 
-  /* Surfaces */
-  --window: rgba(250, 250, 248, 0.82);
+  /* Surfaces: only two layers inside the window (page + cards) */
+  --page: #f6f6f3;
   --card: #ffffff;
-  --soft: #f4f4f1;
-  --line: #e8e7e2;
+  --hover: #f1f1ed;
+  --line: #ebeae5;
+  --line-strong: #dcdbd4;
 
   /* Text */
-  --ink: #1d1f24;
-  --ink-2: #5a5e67;
-  --ink-3: #8d9098;
+  --ink: #17181c;
+  --ink-2: #555963;
+  --ink-3: #8b8f98;
 
-  /* Accent: deep green (featured card, success) */
-  --green: #1f5e4a;
-  --green-2: #2f7d61;
-  --green-soft: #e1f1e9;
+  /* Brand accent (navigation, focus, featured highlights) */
+  --brand: #5546e0;
+  --brand-2: #8a6cff;
+  --brand-soft: #efedfd;
 
   /* The five evidence stages */
-  --obs: #7a6fd0;   --obs-soft: #eceafb;
-  --find: #3d7cc9;  --find-soft: #e3eefa;
-  --ins: #2f9a72;   --ins-soft: #e0f3ea;
-  --rec: #e07a3f;   --rec-soft: #fcebdf;
-  --dec: #1d1f24;   --dec-soft: #e9e9ec;
+  --obs: #7c6cf0;  --obs-soft: #f0eefe;
+  --find: #2f7fd8; --find-soft: #e7f1fc;
+  --ins: #17a173;  --ins-soft: #e3f5ee;
+  --rec: #ef7d3c;  --rec-soft: #fdeee4;
+  --dec: #17181c;  --dec-soft: #ececef;
 
-  --orange: #c4631f;
-  --red: #b23a2e;
+  --warn: #c2621c;
+  --danger: #c23b2e;
 
+  /* Type */
   --font: 'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --serif: 'Newsreader', Georgia, serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 22px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
 
+  /* Space: an 8-point scale */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
+
+  /* Shape and depth */
   --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 30px;
-  --shadow: 0 1px 2px rgba(29, 31, 36, 0.04), 0 10px 30px -14px rgba(40, 52, 80, 0.18);
-  --shadow-lg: 0 30px 80px -30px rgba(40, 52, 80, 0.35);
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --shadow-sm: 0 1px 2px rgba(23, 24, 28, 0.04);
+  --shadow: 0 1px 2px rgba(23, 24, 28, 0.04), 0 8px 24px -16px rgba(30, 40, 70, 0.16);
+  --shadow-hover: 0 2px 4px rgba(23, 24, 28, 0.04), 0 18px 40px -20px rgba(30, 40, 70, 0.28);
+  --shadow-window: 0 40px 100px -40px rgba(30, 40, 70, 0.35);
 }
 
-/* Each stage sets --c (main colour) and --c-soft (tint) for its children. */
+/* Each stage sets --c (colour) and --c-soft (tint) for everything inside it. */
 .stage-observation { --c: var(--obs); --c-soft: var(--obs-soft); }
 .stage-finding { --c: var(--find); --c-soft: var(--find-soft); }
 .stage-insight { --c: var(--ins); --c-soft: var(--ins-soft); }
