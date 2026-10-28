@@ -432,3 +432,89 @@ function saveSimple(table, id, values) {
   loadAll();
   return saved;
 }
+
+// ----- Time-based statistics for the dashboard ------------------------
+
+function todayDate() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// The date to measure "recent" from: the latest day with research activity
+// (not in the future). With the sample study that's in September 2026;
+// as soon as you add something, it becomes today.
+function researchToday() {
+  const today = todayDate().getTime();
+  let latest = 0;
+  const dates = [...data.research_session.map((s) => s.session_date), ...allRecords().map((r) => r.created_at)];
+  for (const value of dates) {
+    const time = new Date(value.length === 10 ? value + 'T00:00' : value).getTime();
+    if (time <= today + 86400000 && time > latest) latest = time;
+  }
+  const day = new Date(latest || today);
+  day.setHours(0, 0, 0, 0);
+  return day;
+}
+
+// How many rows have a date within the last `days` days.
+function addedInLastDays(rows, dateKey, days) {
+  const end = researchToday().getTime() + 86400000;
+  const since = end - days * 86400000;
+  return rows.filter((row) => {
+    const time = new Date(row[dateKey].length === 10 ? row[dateKey] + 'T00:00' : row[dateKey]).getTime();
+    return time >= since && time < end;
+  }).length;
+}
+
+// Counts per month for the last `months` months, oldest first.
+// Returns [{ label: 'Jun', count: 3, isCurrent: false }, ...]
+function countsByMonth(rows, dateKey, months = 6) {
+  const result = [];
+  const now = researchToday();
+  for (let i = months - 1; i >= 0; i--) {
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+    result.push({
+      label: month.toLocaleString('en-GB', { month: 'short' }),
+      count: rows.filter((row) => String(row[dateKey]).slice(0, 7) === key).length,
+      isCurrent: i === 0,
+    });
+  }
+  return result;
+}
+
+// Sessions per week for the last `weeks` weeks (for the dot timeline).
+function sessionsByWeek(weeks = 16) {
+  const result = [];
+  const end = researchToday().getTime() + 86400000;
+  for (let i = weeks - 1; i >= 0; i--) {
+    const from = end - (i + 1) * 7 * 86400000;
+    const to = end - i * 7 * 86400000;
+    const count = data.research_session.filter((s) => {
+      const time = new Date(s.session_date + 'T00:00').getTime();
+      return time > from && time <= to;
+    }).length;
+    result.push({ label: `Week of ${formatDate(new Date(from + 86400000).toISOString().slice(0, 10))}`, count });
+  }
+  return result;
+}
+
+// Share of evidence (steps 1 to 4) that already feeds the next step.
+function evidenceInUsePercent() {
+  let total = 0;
+  let used = 0;
+  for (const stage of STAGES.slice(0, 4)) {
+    total += data[stage.type].length;
+    used += data[stage.type].filter((r) => downstream(stage.type, r.id).length > 0).length;
+  }
+  return total ? Math.round((used / total) * 100) : 0;
+}
+
+// The next planned session (or null).
+function nextSession() {
+  const upcoming = data.research_session
+    .filter((s) => s.status === 'planned')
+    .sort((a, b) => (a.session_date > b.session_date ? 1 : -1));
+  return upcoming[0] || null;
+}

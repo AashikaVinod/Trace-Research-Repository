@@ -18,9 +18,13 @@ function pageSessions(params, query) {
       <div><h1>Sessions</h1><p>Interviews, tests and studies. Observations are recorded against the session they came from.</p></div>
       <button class="btn btn-dark" id="add">${icon('plus', 16)} New session</button>
     </header>
-    <div class="grid-2">
-      <section class="card"><div class="card-top"><h3>Sessions per month</h3></div>${columnChart(sessionsByMonth().map((m) => ({ label: m.label, value: m.sessions })))}</section>
+    <div class="dash dash-3">
+      <section class="card"><div class="card-top"><div><h3>Sessions per month</h3><p class="card-sub">Latest month highlighted</p></div></div>
+        ${pillColumns(countsByMonth(data.research_session, 'session_date').map((m) => ({ label: m.label, value: m.count, highlight: m.isCurrent })))}</section>
       <section class="card"><div class="card-top"><h3>Methods used</h3></div>${donutChart(methodCounts, 'sessions')}</section>
+      <section class="card"><div class="card-top"><h3>Research rhythm</h3></div>${activityDots(sessionsByWeek(16))}
+        <p class="card-sub" style="margin-top:12px">Each dot is a week. Darker means more sessions.</p>
+        ${nextSession() ? `<div class="next-chip">${icon('calendar-days', 15)} Next: <a class="strong-link" href="#/sessions/${nextSession().id}">${esc(nextSession().title)}</a> ${daysUntil(nextSession().session_date)}</div>` : ''}</section>
     </div>
     <div class="toolbar row-gap">
       <label class="sr" for="project">Project</label>

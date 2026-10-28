@@ -40,8 +40,8 @@ const project = `Demo project ${RUN}`;
 await step('opens with the sample study, the logo and totals', async () => {
   await open('/');
   check(await page.locator('.brand img').isVisible(), 'logo');
-  check(Number(await page.locator('.fact strong').first().textContent()) >= 4, 'project total');
-  check(await page.locator('.pipeline li').count() === 5 && await page.locator('.lead-story').count() === 1, 'front page drawn');
+  check(Number(await page.locator('.stat-card strong').first().textContent()) >= 4, 'project total');
+  check(await page.locator('.pill-columns').count() === 1 && await page.locator('.gauge').count() === 1 && await page.locator('.ranks li').count() === 4, 'dashboard components drawn');
 });
 
 
@@ -174,9 +174,12 @@ await step('unlink evidence by editing the finding', async () => {
 });
 
 // ---------- Library, people, sessions ----------
-await step('library: search, tabs and project filter', async () => {
+await step('library: search, tabs, project filter and list view', async () => {
   await open(`/library?q=${RUN}`);
   check(await page.locator('.doc').count() === 5, `found ${await page.locator('.doc').count()}`);
+  await page.locator('[data-layout="list"]').click();
+  check(await page.locator('#results tbody tr').count() === 5, 'list view shows the same 5');
+  await page.locator('[data-layout="grid"]').click();
   await page.locator('.folder-tab', { hasText: 'Insights' }).click();
   check(await page.locator('.doc').count() === 1, 'one insight');
   await page.locator('.folder-tab', { hasText: 'All evidence' }).click();
@@ -240,7 +243,7 @@ await step('duplicate project title is refused', async () => {
 });
 
 await step('archive, undo, archive again, then restore', async () => {
-  await page.locator('.project-card', { hasText: project }).click();
+  await page.locator('.project-table tr', { hasText: project }).locator('a').click();
   await page.locator('#archive').click();
   await modal().locator('#confirm-ok').click();
   await page.waitForSelector('text=This project was archived');
@@ -251,9 +254,9 @@ await step('archive, undo, archive again, then restore', async () => {
   await modal().locator('#confirm-ok').click();
   await page.waitForSelector('text=This project was archived');
   await open('/projects');
-  check(await page.locator('.project-card', { hasText: project }).count() === 0, 'hidden from active list');
+  check(await page.locator('.project-table tr', { hasText: project }).count() === 0, 'hidden from active list');
   await page.locator('[data-show="archived"]').click();
-  await page.locator('.project-card', { hasText: project }).click();
+  await page.locator('.project-table tr', { hasText: project }).locator('a').click();
   await page.locator('#archive').click();
   await modal().locator('#confirm-ok').click();
   await toastSays('Project restored.');

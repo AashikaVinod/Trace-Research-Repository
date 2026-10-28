@@ -53,14 +53,14 @@
       return total;
     }
 
-    // One restrained ink palette: black -> indigo -> violet -> rose -> peach.
-    // A single ramp keeps the background calm; only the brightest folds
-    // turn warm, like light catching the liquid.
+    // Molten amber on black: black -> deep brown -> copper -> amber -> cream.
+    // One warm ramp keeps it calm, and only the brightest folds turn cream,
+    // like light catching liquid gold.
     vec3 ink(float x) {
-      vec3 c = mix(vec3(0.020, 0.018, 0.045), vec3(0.11, 0.09, 0.38), smoothstep(0.00, 0.35, x));
-      c = mix(c, vec3(0.40, 0.29, 0.92), smoothstep(0.35, 0.62, x));
-      c = mix(c, vec3(0.92, 0.45, 0.72), smoothstep(0.62, 0.84, x));
-      return mix(c, vec3(1.00, 0.76, 0.56), smoothstep(0.86, 1.00, x));
+      vec3 c = mix(vec3(0.018, 0.014, 0.010), vec3(0.17, 0.075, 0.025), smoothstep(0.00, 0.35, x));
+      c = mix(c, vec3(0.62, 0.30, 0.08), smoothstep(0.35, 0.62, x));
+      c = mix(c, vec3(0.98, 0.66, 0.24), smoothstep(0.62, 0.84, x));
+      return mix(c, vec3(1.00, 0.91, 0.72), smoothstep(0.86, 1.00, x));
     }
 
     void main() {
@@ -74,7 +74,8 @@
                     layers(uv + 2.6 * q + vec2(8.3, 2.8) - 0.4 * t));
       float f = layers(uv + 2.6 * r);
 
-      vec3 color = ink(clamp(pow(f, 2.6) * 2.3, 0.0, 0.95));
+      float grain = layers(uv * 6.0 + 4.0 * r);               // fine swirl texture inside the folds
+      vec3 color = ink(clamp(pow(f, 2.6) * 2.05 + (grain - 0.5) * 0.18, 0.0, 0.95));
 
       // A soft light that drifts slowly underneath.
       vec2 p = gl_FragCoord.xy / size - 0.5;

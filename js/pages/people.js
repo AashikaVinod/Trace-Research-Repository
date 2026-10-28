@@ -35,10 +35,14 @@ function pagePeople() {
       <div><h1>People</h1><p>Participants are identified by code only. TRACE never stores names or contact details.</p></div>
       <button class="btn btn-dark" id="add-participant">${icon('user-plus', 16)} New participant</button>
     </header>
-    <div class="grid-2">
+    <div class="dash dash-3">
       <section class="card"><div class="card-top"><h3>Participants per segment</h3></div>
         <p class="card-note">One person can belong to several segments.</p>${barChart(segmentBars)}</section>
-      <section class="card"><div class="card-top"><h3>Age bands</h3></div>${columnChart(ageColumns, 'var(--obs)')}</section>
+      <section class="card"><div class="card-top"><h3>Age bands</h3></div>${pillColumns(ageColumns.map((a) => ({ label: a.label, value: a.value, highlight: a.value === Math.max(...ageColumns.map((x) => x.value)) })))}</section>
+      <section class="card"><div class="card-top"><h3>Most involved</h3></div>
+        ${rankList([...data.participant].map((p) => ({ p, n: sessionsOf(p) })).sort((a, b) => b.n - a.n).slice(0, 4)
+          .map(({ p, n }) => ({ label: p.participant_code, value: n, unit: n === 1 ? 'session' : 'sessions', href: `#/sessions?participant=${p.id}`, note: segmentsOf(p).map((g) => g.name).join(', ') || 'No segment' })))}
+      </section>
     </div>
     <section class="card table-card row-gap">
       <table class="table">

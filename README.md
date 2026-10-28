@@ -39,9 +39,9 @@ More documents:
 
 | Page | What you can do | Main DBMS idea |
 | --- | --- | --- |
-| **Home** | A front page: a headline from real numbers, the latest decision with its evidence chain, an "in numbers" box, how sessions felt, and the five-step pipeline | Aggregates, views, recursive CTE |
-| **Projects** | Search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment and question coverage. | JOINs, soft delete, triggers |
-| **Research library** | Folder tabs for the five evidence types, search, project filter, document cards | UNION ALL view, WHERE / ILIKE |
+| **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
+| **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
+| **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view | UNION ALL view, WHERE / ILIKE |
 | **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
 | **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
@@ -79,7 +79,7 @@ js/config.js                the optional AI switch
 js/icons.js                 icon shapes (Lucide)
 js/sample-data.js           the fictional sample study (generated from tools/generate_seed.py)
 js/helpers.js               esc() for safe HTML, icons, dates, toasts, dialogs, the form builder
-js/charts.js                bar, column, donut, ring and funnel charts made from HTML + CSS
+js/charts.js                charts and dashboard components (sparklines, gauge, pill columns, leaderboard…) made from HTML + CSS
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
 js/assistant.js             Quick answers

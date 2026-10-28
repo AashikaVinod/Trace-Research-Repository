@@ -42,7 +42,9 @@ select * from research_project where archived_at is not null; -- archived`,
       .sort((a, b) => (b.start_date > a.start_date ? 1 : -1));
     $('#count').textContent = plural(list.length, 'project');
     $('#list').innerHTML = list.length
-      ? `<div class="project-grid">${list.map(projectCard).join('')}</div>`
+      ? `<div class="card table-card"><table class="table project-table">
+          <thead><tr><th scope="col">Project</th><th scope="col" class="hide-sm">Team</th><th scope="col">Evidence collected</th><th scope="col" class="hide-sm">Sessions</th><th scope="col">Status</th></tr></thead>
+          <tbody>${list.map(projectRow).join('')}</tbody></table></div>`
       : `<div class="empty"><h2>No projects here</h2><p>Try another filter, or create a project.</p></div>`;
   }
 
@@ -52,21 +54,19 @@ select * from research_project where archived_at is not null; -- archived`,
   draw();
 }
 
-function projectCard(p) {
+// One project as a table row (inspired by the Growly "active programs" table).
+function projectRow(p) {
   const counts = projectCounts(p.id);
-  const lead = projectLead(p.id);
-  return `<a class="card project-card ${p.archived_at ? 'is-archived' : ''}" href="#/projects/${p.id}">
-    <div class="pills">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div>
-    <h3>${esc(p.title)}</h3>
-    <p class="muted">${esc(shorten(p.research_objective, 110))}</p>
-    <div class="mini-chain" role="img" aria-label="${STAGES.map((s) => `${counts[s.type]} ${s.plural.toLowerCase()}`).join(', ')}">
-      ${STAGES.map((s) => `<span class="stage-${s.type}">${counts[s.type]}</span>`).join('')}
-    </div>
-    <div class="card-foot">
-      ${lead ? avatar(lead.full_name, 30) : ''}
-      ${meta(lead ? esc(lead.full_name) : 'No lead yet', plural(counts.sessions, 'session'))}
-    </div>
-  </a>`;
+  const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => byId('researcher', l.researcher_id));
+  const total = STAGES.reduce((sum, s) => sum + counts[s.type], 0);
+  const segments = STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural }));
+  return `<tr class="${p.archived_at ? 'is-archived' : ''}">
+    <td><a class="strong-link" href="#/projects/${p.id}">${esc(p.title)}</a><small>${esc(shorten(p.research_objective, 80))}</small></td>
+    <td class="hide-sm"><span class="avatars">${team.map((r) => avatar(r.full_name, 28)).join('')}</span></td>
+    <td class="evidence-cell">${segmentBar(segments)}<small>${plural(total, 'record')}, ${counts.design_decision} decided</small></td>
+    <td class="hide-sm">${counts.sessions}</td>
+    <td><div class="pills">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div></td>
+  </tr>`;
 }
 
 function pageProject(params) {
@@ -101,12 +101,7 @@ function pageProject(params) {
 
     <div class="grid-2 row-gap">
       <section class="card"><div class="card-top"><h3>Evidence funnel</h3></div>${funnelChart(counts, `&project=${p.id}`)}</section>
-      <section class="card"><div class="card-top"><h3>How sessions felt</h3></div>
-        ${donutChart([
-          { label: 'Negative', value: sentiment.negative, color: CHART_COLORS.negative },
-          { label: 'Neutral', value: sentiment.neutral, color: CHART_COLORS.neutral },
-          { label: 'Positive', value: sentiment.positive, color: CHART_COLORS.positive },
-        ], 'observations')}</section>
+      <section class="card"><div class="card-top"><h3>How sessions felt</h3></div>${sentimentFaces(sentiment)}</section>
     </div>
 
     <div class="grid-main row-gap">

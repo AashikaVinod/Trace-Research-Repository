@@ -26,7 +26,7 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | SQL integrity, security and view tests (`tests/run-sql-tests.sh`) | 33/33 passed |
 | Every user flow (`tests/e2e.mjs`) | 25/25 passed |
 | Layout at 9 screen sizes (320×640 up to 1920×1080), all 11 pages | No sideways scrolling, and the sidebar never spills out of the window |
-| Text contrast on the glass over the moving liquid (sampled from screenshots) | Worst 5.10:1 (AA needs 4.5) |
+| Text contrast on the glass over the moving liquid (113,000+ light-surface pixels sampled from screenshots) | 99% at 5.11:1 or better (AA needs 4.5); the few lower pixels are borders and chart hatching, not text backgrounds |
 | Liquid background (WebGL on), all 11 pages | No errors |
 | Colour contrast of all 17 palette text pairs | All pass WCAG AA |
 | Reduced motion, keyboard focus, skip link, assistant focus handling | Pass |

@@ -45,7 +45,17 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | **Jakob's law** (work like other apps) | Familiar patterns: a sidebar, `/` to search, Esc to close, toasts with Undo. |
 | **Aesthetic-usability effect** | Consistent tokens, a real logo and calm spacing make the tool feel trustworthy. |
 
-## Making it feel designed, not generated (latest round)
+## Human-made polish pass (latest round)
+
+| Issue | Change |
+| --- | --- |
+| The fonts (a neat grotesk plus an editorial serif) are the default look of AI-generated sites | **Bricolage Grotesque** for headings and numbers, **Onest** for text; no serif |
+| A purple-violet background is the most recognisable AI-product colour | **Molten amber on black**, like the liquid reference, paired with the deep Trace Green |
+| Components were generic cards | Rebuilt from the reference designs: highlighted stat card, change badges with sparklines, hatched pill columns, half-circle gauge, reminder card, segmented progress rows, leaderboard, faces, dot timeline, concentric funnel, grid/list toggle |
+| Change badges measured from today, so a fixed sample showed "0" everywhere | "Recent" is measured from the study's latest activity; adding anything makes it today |
+| Truncated project names, decision titles and labels | More width where it matters, and two-line clamps instead of cutting text off |
+
+## Making it feel designed, not generated (earlier round)
 
 Some patterns read as "AI-generated" because so many AI products use them. We replaced each one with something specific to research:
 

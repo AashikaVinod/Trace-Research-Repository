@@ -3,8 +3,8 @@
    Every colour, size and radius in the app comes from this file.
    The full brand guide is in docs/brand.md.
    ================================================================ */
-@font-face { font-family: 'Schibsted Grotesk'; src: url('../assets/fonts/schibsted-grotesk-latin-wght.woff2') format('woff2'); font-weight: 400 900; font-display: swap; }
-@font-face { font-family: 'Newsreader'; src: url('../assets/fonts/newsreader-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Bricolage Grotesque'; src: url('../assets/fonts/bricolage-grotesque-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('../assets/fonts/onest-latin-wght.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 
 :root {
   /* ---- Core brand colours ---- */
@@ -37,8 +37,9 @@
   --warn: #9c4612;
 
   /* ---- Type ---- */
-  --font: 'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --serif: 'Newsreader', Georgia, serif;
+  --font: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;          /* everything you read */
+  --display: 'Bricolage Grotesque', 'Onest', ui-sans-serif, system-ui, sans-serif;            /* headings and big numbers */
+  --serif: var(--font); /* kept so older rules still work; TRACE no longer uses a serif */
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* ---- Space (8-point scale) ---- */

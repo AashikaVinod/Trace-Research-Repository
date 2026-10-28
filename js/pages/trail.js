@@ -51,9 +51,10 @@ select * from up;
     const counts = stageCounts(projectId || null);
     view.innerHTML = `${head}
       <div class="grid-main">
-        <section class="card"><div class="card-top"><h3>From observation to decision</h3></div>
-          <p class="card-note">How many records reach each step. Click a step to see them.</p>
-          ${funnelChart(counts, projectId ? `&project=${projectId}` : '')}</section>
+        <section class="card funnel-card"><div class="card-top"><div><h3>From observation to decision</h3><p class="card-sub">Each ring is one step; the smallest is what the team decided.</p></div></div>
+          <div class="funnel-layout">${concentricFunnel(counts)}
+            <ul class="legend">${STAGES.map((s) => `<li class="stage-${s.type}"><i style="background:var(--c)"></i><a href="#/library?type=${s.type}${projectId ? `&project=${projectId}` : ''}">${s.plural}</a><b>${counts[s.type]}</b></li>`).join('')}</ul>
+          </div></section>
         <section class="card"><div class="card-top"><h3>Evidence health</h3></div>
           <div class="rings">
             ${ringStat(completeTrailPercent(), 'var(--ins)', 'Decisions with full evidence', 'Traced back to an observation')}

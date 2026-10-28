@@ -8,6 +8,7 @@ function pageLibrary(params, query) {
   let type = STAGE[query.type] ? query.type : '';
   let projectId = query.project ? Number(query.project) : '';
   let search = query.q || '';
+  let layout = query.view === 'list' ? 'list' : 'grid';
   $('#search-input').value = search;
 
   let tabs = `<button class="folder-tab" role="tab" data-type="">All evidence <small>${allRecords().length}</small></button>`;
@@ -31,6 +32,10 @@ function pageLibrary(params, query) {
           ${data.research_project.map((p) => `<option value="${p.id}">${esc(p.title)}${p.archived_at ? ' (archived)' : ''}</option>`).join('')}
         </select>
         <span class="count" id="count" aria-live="polite"></span>
+        <div class="chips" role="group" aria-label="Layout">
+          <button class="chip" data-layout="grid" aria-label="Grid view" title="Grid view">${icon('layout-grid', 16)}</button>
+          <button class="chip" data-layout="list" aria-label="List view" title="List view">${icon('list', 16)}</button>
+        </div>
       </div>
       <div id="results"></div>
     </div>
@@ -44,7 +49,8 @@ where (title ilike '%slot%' or description ilike '%slot%')
   $('#project').value = String(projectId);
 
   function draw() {
-    setQuery({ type, project: projectId, q: search });
+    setQuery({ type, project: projectId, q: search, view: layout === 'list' ? 'list' : '' });
+    $$('[data-layout]').forEach((button) => button.setAttribute('aria-pressed', button.dataset.layout === layout));
     $$('[data-type]').forEach((tab) => tab.setAttribute('aria-selected', tab.dataset.type === type));
     const words = search.toLowerCase().split(' ').filter((word) => word);
     const list = allRecords()
@@ -53,13 +59,19 @@ where (title ilike '%slot%' or description ilike '%slot%')
       .filter((r) => words.every((word) => `${r.title} ${r.description}`.toLowerCase().includes(word)))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
     $('#count').textContent = plural(list.length, 'record');
+    let html = `<div class="doc-grid">${list.map(docCard).join('')}</div>`;
+    if (layout === 'list') {
+      html = `<table class="table"><thead><tr><th scope="col">Step</th><th scope="col">Title</th><th scope="col" class="hide-sm">Project</th><th scope="col" class="hide-sm">Links</th><th scope="col" class="hide-sm">Added</th></tr></thead>
+        <tbody>${list.map(recordRow).join('')}</tbody></table>`;
+    }
     $('#results').innerHTML = list.length
-      ? `<div class="doc-grid">${list.map(docCard).join('')}</div>`
+      ? html
       : `<div class="empty"><h2>Nothing matches</h2><p>Try another tab, project or search.</p></div>`;
   }
 
   $('#add').onclick = () => (type ? editRecord(type, null, { projectId }) : openNewMenu());
   $$('[data-type]').forEach((tab) => { tab.onclick = () => { type = tab.dataset.type; draw(); }; });
+  $$('[data-layout]').forEach((button) => { button.onclick = () => { layout = button.dataset.layout; draw(); }; });
   $('#project').onchange = (event) => { projectId = event.target.value ? Number(event.target.value) : ''; draw(); };
   $('#filter').oninput = (event) => { search = event.target.value; draw(); };
   draw();
@@ -97,6 +109,21 @@ function chainPosition(type, upCount, downCount) {
     html += `<span class="stage-${stage.type} ${state}">${stage.step}. ${stage.label}</span>`;
   }
   return html + '</div>';
+}
+
+// A record as a table row (the list view, like the Repository reference).
+function recordRow(r) {
+  const stage = STAGE[r.type];
+  const project = byId('research_project', r.project_id);
+  const sources = upstream(r.type, r.id).length;
+  const uses = downstream(r.type, r.id).length;
+  return `<tr>
+    <td><span class="doc-type stage-${r.type}"><b>${stage.step}</b>${stage.label}</span></td>
+    <td><a class="strong-link" href="#/record/${r.type}/${r.id}">${esc(r.title)}</a></td>
+    <td class="hide-sm">${esc(project ? project.title : '')}</td>
+    <td class="hide-sm">${r.type === 'observation' ? '' : `${sources} in`}${r.type !== 'observation' && r.type !== 'design_decision' ? ', ' : ''}${r.type === 'design_decision' ? '' : `${uses} out`}</td>
+    <td class="hide-sm nowrap">${formatDate(r.created_at)}</td>
+  </tr>`;
 }
 
 // The details shown beside a record, per type.
