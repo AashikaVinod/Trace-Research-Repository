@@ -2,21 +2,40 @@
 // helpers.js - small tools used by every page.
 // ===================================================================
 
-// Escape text before putting it inside HTML. ALWAYS use this for data,
-// so text typed by users can never become HTML or scripts.
+// Make text safe to put inside HTML. Use this for ALL data, so text
+// that people type can never turn into HTML or a script.
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
-const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+// Short names for finding elements.
+function $(selector, root = document) { return root.querySelector(selector); }
+function $$(selector, root = document) { return Array.from(root.querySelectorAll(selector)); }
 
-// Returns an inline SVG icon (shapes from js/icons.js).
+// An inline SVG icon. The shapes come from js/icons.js (Lucide).
 function icon(name, size = 18) {
-  const shapes = (ICONS[name] || []).map(([tag, attrs]) =>
-    `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('');
-  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes}</svg>`;
+  let shapes = '';
+  for (const [tag, attributes] of ICONS[name] || []) {
+    let attributeText = '';
+    for (const key in attributes) attributeText += ` ${key}="${attributes[key]}"`;
+    shapes += `<${tag}${attributeText}/>`;
+  }
+  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes}</svg>`;
 }
+
+// The TRACE logo mark (assets/logo-mark.svg).
+function logo(size = 28) {
+  return `<img src="assets/logo-mark.svg" width="${size}" height="${size}" alt="">`;
+}
+
+// ----- Text and dates ------------------------------------------------
 
 function formatDate(value) {
   if (!value) return '—';
@@ -26,24 +45,42 @@ function formatDate(value) {
 
 function today() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
 }
 
-const plural = (n, word, many = word + 's') => `${n} ${n === 1 ? word : many}`;
-const shorten = (text, max = 120) => (!text ? '' : text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text);
-const capital = (text) => (text ? text[0].toUpperCase() + text.slice(1) : '');
+function plural(count, word, many = word + 's') {
+  return `${count} ${count === 1 ? word : many}`;
+}
 
-// Coloured initials instead of photos (no personal images are stored).
+function shorten(text, max = 120) {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1).trimEnd() + '…';
+}
+
+function capital(text) {
+  if (!text) return '';
+  return text[0].toUpperCase() + text.slice(1);
+}
+
+// ----- Small visual pieces ---------------------------------------------
+
+// Coloured initials instead of photos (TRACE stores no personal images).
 function avatar(name, size = 28) {
-  const letters = (name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-  const hue = [...(name || '')].reduce((h, c) => h + c.charCodeAt(0), 0) % 5;
-  return `<span class="avatar tone-${hue}" style="--size:${size}px" title="${esc(name)}">${esc(letters)}</span>`;
+  const words = (name || '?').split(' ');
+  const letters = (words[0][0] + (words[1] ? words[1][0] : '')).toUpperCase();
+  let total = 0;
+  for (const letter of name || '') total += letter.charCodeAt(0);
+  return `<span class="avatar tone-${total % 5}" style="--size:${size}px" title="${esc(name)}">${esc(letters)}</span>`;
 }
 
 function pill(text, tone = 'grey') {
   return `<span class="pill pill-${tone}">${esc(capital(text))}</span>`;
 }
 
+// Which colour each status word gets.
 const TONES = {
   active: 'green', planned: 'blue', paused: 'orange', completed: 'grey', cancelled: 'grey',
   high: 'orange', medium: 'blue', low: 'grey',
@@ -51,23 +88,68 @@ const TONES = {
   accepted: 'green', proposed: 'purple', rejected: 'grey',
   implemented: 'green', approved: 'blue', reversed: 'grey',
 };
-const statusPill = (value) => pill(value, TONES[value] || 'grey');
+function statusPill(value) { return pill(value, TONES[value] || 'grey'); }
+
+// A quiet line of details, e.g. meta('Project', '2 sessions').
+// The dots between items come from CSS; empty parts are skipped.
+function meta(...parts) {
+  const items = parts.filter((part) => part);
+  return `<span class="meta">${items.map((part) => `<span>${part}</span>`).join('')}</span>`;
+}
+
+// "How the database does this" panel shown at the bottom of pages.
+// concepts: list of DBMS concept names. sql: the matching SQL.
+function dbPanel(concepts, sql, note = '') {
+  return `<details class="db-panel">
+    <summary>${icon('database')} How the database does this ${icon('chevron-down')}</summary>
+    <div class="db-body">
+      <div class="concepts">${concepts.map((c) => `<span class="concept">${esc(c)}</span>`).join('')}</div>
+      ${note ? `<p class="muted small">${note}</p>` : ''}
+      <pre class="sql">${highlightSql(sql)}</pre>
+    </div>
+  </details>`;
+}
+
+// Colours SQL keywords so queries are easier to read.
+const SQL_WORDS = ['select', 'from', 'where', 'join', 'left join', 'on', 'group by', 'order by', 'count', 'distinct',
+  'union all', 'with recursive', 'as', 'and', 'or', 'not exists', 'insert into', 'values', 'update', 'set', 'delete',
+  'create view', 'create policy', 'create trigger', 'references', 'primary key', 'foreign key', 'unique', 'check',
+  'returning', 'limit', 'filter', 'is null', 'ilike', 'in', 'desc', 'begin', 'commit'];
+function highlightSql(sql) {
+  let html = esc(sql.trim());
+  html = html.replace(/(--[^\n]*)/g, '<span class="cm">$1</span>');
+  html = html.replace(/(&#39;[^&]*?&#39;)/g, '<span class="str">$1</span>');
+  for (const word of SQL_WORDS) {
+    html = html.replace(new RegExp(`\\b(${word})\\b`, 'gi'), '<span class="kw">$1</span>');
+  }
+  return html;
+}
 
 // ----- Toast messages ------------------------------------------------
-function toast(message, type = 'success') {
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
-  el.innerHTML = `${icon(type === 'error' ? 'triangle-alert' : 'circle-check')}<p>${esc(message)}</p>`;
-  $('#toasts').append(el);
-  setTimeout(() => el.remove(), type === 'error' ? 8000 : 4000);
+// toast('Saved.') or toast('Archived.', 'success', { label: 'Undo', run: fn })
+function toast(message, type = 'success', action = null) {
+  const box = document.createElement('div');
+  box.className = `toast toast-${type}`;
+  box.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  box.innerHTML = `${icon(type === 'error' ? 'triangle-alert' : 'circle-check')}<p>${esc(message)}</p>`;
+  if (action) {
+    const button = document.createElement('button');
+    button.textContent = action.label;
+    button.onclick = () => { box.remove(); action.run(); };
+    box.append(button);
+  }
+  $('#toasts').append(box);
+  setTimeout(() => box.remove(), action ? 8000 : type === 'error' ? 8000 : 4000);
 }
 
 // ----- Modal dialogs ---------------------------------------------------
 // Opens a <dialog>. `body` and `footer` are HTML strings.
-function openModal({ title, body, footer = '', wide = false, onClose }) {
+// canClose (optional) can stop the dialog closing, e.g. unsaved changes.
+function openModal({ title, body, footer = '', wide = false, onClose, canClose }) {
+  const opener = document.activeElement;
   const dialog = document.createElement('dialog');
-  dialog.className = 'modal' + (wide ? ' modal-wide' : '');
+  dialog.className = wide ? 'modal modal-wide' : 'modal';
+  dialog.setAttribute('aria-label', title);
   dialog.innerHTML = `
     <header class="modal-head">
       <h2>${esc(title)}</h2>
@@ -75,12 +157,27 @@ function openModal({ title, body, footer = '', wide = false, onClose }) {
     </header>
     <div class="modal-body">${body}</div>
     ${footer ? `<footer class="modal-foot">${footer}</footer>` : ''}`;
-  const close = () => dialog.close();
-  dialog.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
-  dialog.addEventListener('close', () => { dialog.remove(); if (onClose) onClose(); });
+
+  async function requestClose() {
+    if (canClose && !(await canClose())) return;
+    dialog.close();
+  }
+  dialog.addEventListener('click', (event) => {
+    if (event.target.closest('[data-close]')) requestClose();
+  });
+  dialog.addEventListener('cancel', (event) => { // the Escape key
+    event.preventDefault();
+    requestClose();
+  });
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+    if (onClose) onClose();
+    if (opener && document.contains(opener)) opener.focus(); // give focus back
+  });
+
   document.body.append(dialog);
   dialog.showModal();
-  return { dialog, close };
+  return { dialog, close: () => dialog.close() };
 }
 
 function confirmBox(title, text, okLabel = 'Confirm') {
@@ -89,7 +186,8 @@ function confirmBox(title, text, okLabel = 'Confirm') {
     const { dialog, close } = openModal({
       title,
       body: `<p class="muted">${esc(text)}</p>`,
-      footer: `<button class="btn" data-close>Cancel</button><button class="btn btn-dark" id="confirm-ok">${esc(okLabel)}</button>`,
+      footer: `<button class="btn" data-close>Cancel</button>
+               <button class="btn btn-dark" id="confirm-ok">${esc(okLabel)}</button>`,
       onClose: () => resolve(answer),
     });
     $('#confirm-ok', dialog).onclick = () => { answer = true; close(); };
@@ -97,58 +195,78 @@ function confirmBox(title, text, okLabel = 'Confirm') {
 }
 
 // ----- Forms ----------------------------------------------------------
-// openForm({ title, fields, values, submitLabel, onSave })
-// Each field: { name, label, type, options, required, min, pattern,
-//   patternMessage, half, help, disabled, number, dependsOn, check }
+// openForm({ title, fields, values, submitLabel, onSave }) shows a form,
+// checks it, and calls onSave(values). Each field looks like:
+//   { name, label, type, options, required, min, pattern, patternMessage,
+//     half, help, disabled, number, dependsOn, check, emptyText }
 // type: text | email | date | number | textarea | select | checkboxes
-// `options` can be a list, or a function (currentValues) => list, so a
-// field can change when another one does (see `dependsOn`).
+// options: a list, or a function (current values) => list, which lets a
+// field change when another field changes (see dependsOn).
 function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) {
   return new Promise((resolve) => {
     let saved = null;
-    const getOptions = (field, current) => (typeof field.options === 'function' ? field.options(current) : field.options || []);
+    let startingValues = '';
+
+    function getOptions(field, current) {
+      return typeof field.options === 'function' ? field.options(current) : field.options || [];
+    }
 
     function controlHtml(field, current) {
       const id = `f-${field.name}`;
       const value = current[field.name];
-      const attrs = `id="${id}" name="${field.name}" ${field.disabled ? 'disabled' : ''}`;
-      if (field.type === 'textarea') return `<textarea class="input" rows="${field.rows || 4}" ${attrs}>${esc(value)}</textarea>`;
+      const attributes = `id="${id}" name="${field.name}" ${field.disabled ? 'disabled' : ''} ${field.required ? 'aria-required="true"' : ''}`;
+
+      if (field.type === 'textarea') {
+        return `<textarea class="input" rows="${field.rows || 4}" ${attributes}>${esc(value)}</textarea>`;
+      }
       if (field.type === 'select') {
-        const options = getOptions(field, current);
-        return `<select class="input" ${attrs}>
-          <option value="">${field.required ? 'Choose…' : 'None'}</option>
-          ${options.map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(value ?? '') ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
-        </select>`;
+        let html = `<select class="input" ${attributes}><option value="">${field.required ? 'Choose…' : 'None'}</option>`;
+        for (const option of getOptions(field, current)) {
+          const selected = String(option.value) === String(value ?? '') ? 'selected' : '';
+          html += `<option value="${esc(option.value)}" ${selected}>${esc(option.label)}</option>`;
+        }
+        return html + '</select>';
       }
       if (field.type === 'checkboxes') {
         const options = getOptions(field, current);
+        if (options.length === 0) return `<p class="checklist-empty">${esc(field.emptyText || 'Nothing to choose yet.')}</p>`;
         const chosen = (value || []).map(String);
-        if (!options.length) return `<p class="checklist-empty">${esc(field.emptyText || 'Nothing to choose yet.')}</p>`;
-        return `<div class="checklist" id="${id}">${options.map((o) => `
-          <label class="check"><input type="checkbox" value="${esc(o.value)}" ${chosen.includes(String(o.value)) ? 'checked' : ''}>
-            <span>${esc(o.label)}${o.hint ? `<small>${esc(o.hint)}</small>` : ''}</span></label>`).join('')}</div>`;
+        let html = `<div class="checklist" id="${id}" role="group" aria-label="${esc(field.label)}">`;
+        for (const option of options) {
+          const checked = chosen.includes(String(option.value)) ? 'checked' : '';
+          html += `<label class="check"><input type="checkbox" value="${esc(option.value)}" ${checked}>
+            <span>${esc(option.label)}${option.hint ? `<small>${esc(option.hint)}</small>` : ''}</span></label>`;
+        }
+        return html + '</div>';
       }
-      return `<input class="input" type="${field.type || 'text'}" value="${esc(value)}" ${attrs}>`;
+      return `<input class="input" type="${field.type || 'text'}" value="${esc(value)}" ${attributes}>`;
     }
 
-    function fieldHtml(field, current) {
+    function fieldHtml(field) {
       const optional = field.required ? '' : ' <span class="optional">optional</span>';
       return `<div class="field ${field.half ? 'half' : ''}" data-field="${field.name}">
         <label class="label" for="f-${field.name}">${esc(field.label)}${optional}</label>
-        <div class="control">${controlHtml(field, current)}</div>
+        <div class="control">${controlHtml(field, values)}</div>
         ${field.help ? `<p class="help">${esc(field.help)}</p>` : ''}
         <p class="error" hidden></p>
       </div>`;
     }
 
+    // Ask before throwing away changes (an HCI "error prevention" rule).
+    async function canClose() {
+      if (saved || JSON.stringify(readValues()) === startingValues) return true;
+      return confirmBox('Discard your changes?', 'You have changes in this form that are not saved yet.', 'Discard');
+    }
+
     const { dialog, close } = openModal({
       title,
-      wide: fields.some((f) => f.type === 'checkboxes'),
-      body: `<form id="the-form" class="form" novalidate>${fields.map((f) => fieldHtml(f, values)).join('')}</form>`,
+      wide: fields.some((field) => field.type === 'checkboxes'),
+      body: `<form id="the-form" class="form" novalidate>${fields.map(fieldHtml).join('')}</form>`,
       footer: `<p class="form-alert" role="alert" hidden></p>
         <button class="btn" type="button" data-close>Cancel</button>
         <button class="btn btn-dark" type="submit" form="the-form">${esc(submitLabel)}</button>`,
       onClose: () => resolve(saved),
+      canClose,
     });
     const form = $('#the-form', dialog);
 
@@ -157,7 +275,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       const result = { ...values };
       for (const field of fields) {
         if (field.type === 'checkboxes') {
-          result[field.name] = $$(`[data-field="${field.name}"] input:checked`, form).map((i) => Number(i.value));
+          result[field.name] = $$(`[data-field="${field.name}"] input:checked`, form).map((box) => Number(box.value));
           continue;
         }
         const raw = $(`#f-${field.name}`, form).value.trim();
@@ -167,26 +285,33 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       }
       return result;
     }
+    startingValues = JSON.stringify(readValues());
 
-    // Re-draw fields whose options depend on another field.
-    form.addEventListener('change', (e) => {
-      const changed = e.target.name;
+    // Re-draw fields whose options depend on the field that changed.
+    form.addEventListener('change', (event) => {
+      const changed = event.target.name;
       if (!changed) return;
       const current = readValues();
-      for (const field of fields.filter((f) => (f.dependsOn || []).includes(changed))) {
-        $(`[data-field="${field.name}"] .control`, form).innerHTML = controlHtml(field, current);
+      for (const field of fields) {
+        if ((field.dependsOn || []).includes(changed)) {
+          $(`[data-field="${field.name}"] .control`, form).innerHTML = controlHtml(field, current);
+        }
       }
     });
 
-    function validate(current) {
+    function findProblems(current) {
       const problems = {};
       for (const field of fields) {
         if (field.disabled) continue;
-        const v = current[field.name];
-        if (field.required && (v == null || (Array.isArray(v) && !v.length))) problems[field.name] = 'This is required.';
-        else if (typeof v === 'string' && field.min && v.length < field.min) problems[field.name] = `Use at least ${field.min} characters.`;
-        else if (typeof v === 'string' && field.pattern && !field.pattern.test(v)) problems[field.name] = field.patternMessage || 'Check the format.';
-        else if (field.check) { const msg = field.check(v, current); if (msg) problems[field.name] = msg; }
+        const value = current[field.name];
+        const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
+        if (field.required && isEmpty) problems[field.name] = 'This is required.';
+        else if (typeof value === 'string' && field.min && value.length < field.min) problems[field.name] = `Use at least ${field.min} characters.`;
+        else if (typeof value === 'string' && field.pattern && !field.pattern.test(value)) problems[field.name] = field.patternMessage || 'Check the format.';
+        else if (field.check) {
+          const message = field.check(value, current);
+          if (message) problems[field.name] = message;
+        }
       }
       return problems;
     }
@@ -194,33 +319,45 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
     function showProblems(problems) {
       for (const field of fields) {
         const box = $(`[data-field="${field.name}"]`, form);
-        const message = problems[field.name];
-        box.classList.toggle('has-error', !!message);
-        $('.error', box).textContent = message || '';
-        $('.error', box).hidden = !message;
+        const message = problems[field.name] || '';
+        box.classList.toggle('has-error', message !== '');
+        $('.error', box).textContent = message;
+        $('.error', box).hidden = message === '';
+        const input = $(`#f-${field.name}`, form);
+        if (input) input.setAttribute('aria-invalid', message ? 'true' : 'false');
       }
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
       const alertBox = $('.form-alert', dialog);
       alertBox.hidden = true;
       const current = readValues();
-      const problems = validate(current);
+      const problems = findProblems(current);
       showProblems(problems);
-      if (Object.keys(problems).length) {
-        $(`[data-field="${Object.keys(problems)[0]}"] .input, [data-field="${Object.keys(problems)[0]}"] input`, form)?.focus();
+      const firstProblem = Object.keys(problems)[0];
+      if (firstProblem) {
+        alertBox.textContent = 'Please fix the highlighted fields.';
+        alertBox.hidden = false;
+        const target = $(`#f-${firstProblem}`, form) || $(`[data-field="${firstProblem}"] input`, form);
+        if (target) target.focus();
         return;
       }
+
       const button = $('button[type=submit]', dialog);
       button.disabled = true;
       button.textContent = 'Saving…';
       try {
-        saved = (await onSave(current)) ?? true;
+        saved = (await onSave(current)) || true;
         close();
       } catch (error) {
-        if (error.saved) { saved = error.saved; close(); toast(error.message, 'error'); return; }
-        if (error.field && fields.some((f) => f.name === error.field)) showProblems({ [error.field]: error.message });
+        if (error.saved) { // the record saved but its links did not
+          saved = error.saved;
+          close();
+          toast(error.message, 'error');
+          return;
+        }
+        if (error.field) showProblems({ [error.field]: error.message });
         alertBox.textContent = error.message;
         alertBox.hidden = false;
         button.disabled = false;
@@ -228,12 +365,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       }
     });
 
-    $('.input', form)?.focus();
+    const first = $('.input:not([disabled])', form);
+    if (first) first.focus();
   });
-}
-
-// A quiet line of details, e.g. meta('Project', '2 sessions').
-// The dots between items come from CSS, so empty parts disappear.
-function meta(...parts) {
-  return `<span class="meta">${parts.filter(Boolean).map((p) => `<span>${p}</span>`).join('')}</span>`;
 }

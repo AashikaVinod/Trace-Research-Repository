@@ -22,7 +22,7 @@ http.createServer((req, res) => {
   if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
   if (url.pathname === '/js/config.js' && process.env.TRACE_TEST_URL !== undefined) {
     res.writeHead(200, { 'content-type': 'text/javascript', 'cache-control': 'no-store' });
-    res.end(`const SUPABASE_URL = ${JSON.stringify(process.env.TRACE_TEST_URL)};\nconst SUPABASE_KEY = ${JSON.stringify(process.env.TRACE_TEST_KEY || '')};\n`);
+    res.end(`const SUPABASE_URL = ${JSON.stringify(process.env.TRACE_TEST_URL)};\nconst SUPABASE_KEY = ${JSON.stringify(process.env.TRACE_TEST_KEY || '')};\nconst AI_ASSISTANT = false;\n`);
     return;
   }
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');

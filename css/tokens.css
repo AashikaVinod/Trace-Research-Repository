@@ -1,67 +1,63 @@
 /* ================================================================
-   TRACE design tokens. Change colours, type and spacing here.
+   TRACE brand + design tokens
+   Every colour, size and radius in the app comes from this file.
+   The full brand guide is in docs/brand.md.
    ================================================================ */
 @font-face { font-family: 'Schibsted Grotesk'; src: url('../assets/fonts/schibsted-grotesk-latin-wght.woff2') format('woff2'); font-weight: 400 900; font-display: swap; }
 @font-face { font-family: 'Newsreader'; src: url('../assets/fonts/newsreader-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
 
 :root {
-  /* Canvas around the app window (marble image, with this as fallback) */
-  --canvas: #efede8;
+  /* ---- Core brand colours ---- */
+  --ink: #15161c;          /* Trace Ink: text, primary buttons, the "decision" colour */
+  --paper: #f7f6f2;        /* Trace Paper: the app window */
+  --white: #ffffff;        /* Cards */
+  --green: #1f5a45;        /* Trace Green: links, focus, active states */
+  --green-soft: #e3eee8;
 
-  /* Surfaces: only two layers inside the window (page + cards) */
-  --page: #f6f6f3;
-  --card: #ffffff;
-  --hover: #f1f1ed;
-  --line: #ebeae5;
-  --line-strong: #dcdbd4;
+  /* ---- Evidence spectrum (one colour per stage, also used in the logo) ---- */
+  /* fill = shapes and bars, text = readable text on the tint, soft = the tint */
+  --obs: #7c6cf0;  --obs-text: #5546c2;  --obs-soft: #efedfd;   /* 1 Observation    violet */
+  --find: #2f7fd8; --find-text: #1f5f9e; --find-soft: #e6f0fb;  /* 2 Finding        blue   */
+  --ins: #17a173;  --ins-text: #0f7353;  --ins-soft: #e2f4ec;   /* 3 Insight        green  */
+  --rec: #ef7d3c;  --rec-text: #9c4612;  --rec-soft: #fdede2;   /* 4 Recommendation orange */
+  --dec: #15161c;  --dec-text: #15161c;  --dec-soft: #e9e9ec;   /* 5 Decision       ink    */
 
-  /* Text */
-  --ink: #17181c;
-  --ink-2: #555963;
-  --ink-3: #8b8f98;
+  /* ---- Neutrals ---- */
+  --ink-2: #4f535c;        /* secondary text */
+  --ink-3: #6a6e77;        /* quiet text (still passes WCAG AA on white) */
+  --line: #e7e5df;
+  --line-strong: #d4d2ca;
+  --hover: #f0efea;
 
-  /* Accent: a deep, flat green (no gradients) */
-  --brand: #1f5a45;
-  --brand-soft: #e3eee8;
+  /* ---- Feedback ---- */
+  --danger: #b4362a;
+  --warn: #9c4612;
 
-  /* The five evidence stages */
-  --obs: #7c6cf0;  --obs-soft: #f0eefe;
-  --find: #2f7fd8; --find-soft: #e7f1fc;
-  --ins: #17a173;  --ins-soft: #e3f5ee;
-  --rec: #ef7d3c;  --rec-soft: #fdeee4;
-  --dec: #17181c;  --dec-soft: #ececef;
-
-  --warn: #c2621c;
-  --danger: #c23b2e;
-
-  /* Type */
+  /* ---- Type ---- */
   --font: 'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --serif: 'Newsreader', Georgia, serif;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-md: 15px;
-  --text-lg: 17px;
-  --text-xl: 22px;
-  --text-2xl: 32px;
-  --text-3xl: 44px;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Space: an 8-point scale */
+  /* ---- Space (8-point scale) ---- */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
 
-  /* Shape and depth */
+  /* ---- Shape and depth ---- */
   --r-sm: 8px;
   --r-md: 10px;
   --r-lg: 14px;
-  --r-xl: 18px;
-  --shadow-sm: 0 1px 2px rgba(23, 24, 28, 0.04);
-  --shadow: 0 1px 2px rgba(23, 24, 28, 0.05);
-  --shadow-hover: 0 1px 2px rgba(23, 24, 28, 0.05), 0 6px 16px -10px rgba(23, 24, 28, 0.18);
-  --shadow-window: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 30px 70px -30px rgba(40, 38, 30, 0.35), 0 0 0 1px rgba(40, 38, 30, 0.06);
+  --r-xl: 20px;
+  --shadow: 0 1px 2px rgba(21, 22, 28, 0.05);
+  --shadow-hover: 0 1px 2px rgba(21, 22, 28, 0.05), 0 8px 20px -12px rgba(21, 22, 28, 0.22);
+  --shadow-window: 0 40px 90px -40px rgba(21, 22, 28, 0.5), 0 0 0 1px rgba(21, 22, 28, 0.06);
+
+  /* ---- Layout ---- */
+  --frame: 56px;           /* the marble border around the app window: change this to resize it */
+  --sidebar: 252px;
 }
 
-/* Each stage sets --c (colour) and --c-soft (tint) for everything inside it. */
-.stage-observation { --c: var(--obs); --c-soft: var(--obs-soft); }
-.stage-finding { --c: var(--find); --c-soft: var(--find-soft); }
-.stage-insight { --c: var(--ins); --c-soft: var(--ins-soft); }
-.stage-recommendation { --c: var(--rec); --c-soft: var(--rec-soft); }
-.stage-design_decision { --c: var(--dec); --c-soft: var(--dec-soft); }
+/* Each stage sets --c (fill), --c-text (text) and --c-soft (tint) for its children. */
+.stage-observation     { --c: var(--obs);  --c-text: var(--obs-text);  --c-soft: var(--obs-soft); }
+.stage-finding         { --c: var(--find); --c-text: var(--find-text); --c-soft: var(--find-soft); }
+.stage-insight         { --c: var(--ins);  --c-text: var(--ins-text);  --c-soft: var(--ins-soft); }
+.stage-recommendation  { --c: var(--rec);  --c-text: var(--rec-text);  --c-soft: var(--rec-soft); }
+.stage-design_decision { --c: var(--dec);  --c-text: var(--dec-text);  --c-soft: var(--dec-soft); }

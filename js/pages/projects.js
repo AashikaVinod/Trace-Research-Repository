@@ -1,4 +1,6 @@
-// Projects list and project page.
+// ===================================================================
+// Projects: the list of projects and a page for each project.
+// ===================================================================
 
 function pageProjects(params, query) {
   setCrumbs(['Projects']);
@@ -11,27 +13,42 @@ function pageProjects(params, query) {
       <button class="btn btn-dark" id="add">${icon('plus', 16)} New project</button>
     </header>
     <div class="toolbar">
-      <div class="chips" role="group" aria-label="Show">
-        ${['active', 'all', 'archived'].map((v) => `<button class="chip" data-show="${v}">${capital(v)}</button>`).join('')}
+      <div class="chips" role="group" aria-label="Show projects">
+        <button class="chip" data-show="active">Active</button>
+        <button class="chip" data-show="all">All</button>
+        <button class="chip" data-show="archived">Archived</button>
       </div>
-      <input class="input search-box" id="filter" type="search" placeholder="Search projects" aria-label="Search projects" value="${esc(search)}">
+      <label class="sr" for="filter">Search projects</label>
+      <input class="input search-box" id="filter" type="search" placeholder="Search projects" value="${esc(search)}">
+      <span class="count" id="count" aria-live="polite"></span>
     </div>
-    <div id="list"></div>`;
+    <div id="list"></div>
+    ${dbPanel(['LEFT JOIN', 'Correlated subquery', 'Soft delete (archived_at)', 'WHERE filter', 'View'], `
+-- One row per project with its lead and evidence counts
+select * from v_project_summary;
+
+-- "Active" vs "Archived" is a WHERE filter on a nullable column
+select * from research_project where archived_at is null;    -- active
+select * from research_project where archived_at is not null; -- archived`,
+    'Projects are archived instead of deleted. Foreign keys use ON DELETE RESTRICT, so the database refuses to delete a project that still has sessions or evidence.')}`;
 
   function draw() {
     setQuery({ show: show === 'active' ? '' : show, q: search });
-    $$('[data-show]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.show === show));
+    $$('[data-show]').forEach((button) => button.setAttribute('aria-pressed', button.dataset.show === show));
+    const text = search.toLowerCase();
     const list = data.research_project
-      .filter((p) => (show === 'all' ? true : show === 'archived' ? p.archived_at : !p.archived_at))
-      .filter((p) => `${p.title} ${p.description} ${p.research_objective}`.toLowerCase().includes(search.toLowerCase()))
+      .filter((p) => (show === 'all') || (show === 'archived' ? p.archived_at : !p.archived_at))
+      .filter((p) => `${p.title} ${p.description} ${p.research_objective}`.toLowerCase().includes(text))
       .sort((a, b) => (b.start_date > a.start_date ? 1 : -1));
-    if (!list.length) { $('#list').innerHTML = `<div class="empty"><h2>No projects here</h2><p>Try another filter, or create a project.</p></div>`; return; }
-    $('#list').innerHTML = `<div class="project-grid">${list.map(projectCard).join('')}</div>`;
+    $('#count').textContent = plural(list.length, 'project');
+    $('#list').innerHTML = list.length
+      ? `<div class="project-grid">${list.map(projectCard).join('')}</div>`
+      : `<div class="empty"><h2>No projects here</h2><p>Try another filter, or create a project.</p></div>`;
   }
 
   $('#add').onclick = () => editProject();
-  $$('[data-show]').forEach((b) => { b.onclick = () => { show = b.dataset.show; draw(); }; });
-  $('#filter').oninput = (e) => { search = e.target.value; draw(); };
+  $$('[data-show]').forEach((button) => { button.onclick = () => { show = button.dataset.show; draw(); }; });
+  $('#filter').oninput = (event) => { search = event.target.value; draw(); };
   draw();
 }
 
@@ -39,10 +56,12 @@ function projectCard(p) {
   const counts = projectCounts(p.id);
   const lead = projectLead(p.id);
   return `<a class="card project-card ${p.archived_at ? 'is-archived' : ''}" href="#/projects/${p.id}">
-    <div class="card-top">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div>
+    <div class="pills">${statusPill(p.status)}${p.archived_at ? pill('archived', 'dark') : ''}</div>
     <h3>${esc(p.title)}</h3>
     <p class="muted">${esc(shorten(p.research_objective, 110))}</p>
-    <div class="mini-chain" aria-label="Evidence at each stage">${STAGES.map((s) => `<span class="stage-${s.type}" title="${s.plural}">${counts[s.type]}</span>`).join('')}</div>
+    <div class="mini-chain" role="img" aria-label="${STAGES.map((s) => `${counts[s.type]} ${s.plural.toLowerCase()}`).join(', ')}">
+      ${STAGES.map((s) => `<span class="stage-${s.type}">${counts[s.type]}</span>`).join('')}
+    </div>
     <div class="card-foot">
       ${lead ? avatar(lead.full_name, 30) : ''}
       ${meta(lead ? esc(lead.full_name) : 'No lead yet', plural(counts.sessions, 'session'))}
@@ -52,41 +71,57 @@ function projectCard(p) {
 
 function pageProject(params) {
   const p = byId('research_project', Number(params.id));
-  if (!p) { setCrumbs(['Projects', '#/projects'], ['Not found']); view.innerHTML = `<div class="empty"><h2>Project not found</h2><a class="btn" href="#/projects">Back to projects</a></div>`; return; }
+  if (!p) return notFound('Project', '#/projects', 'projects');
   setCrumbs(['Projects', '#/projects'], [p.title]);
+
   const counts = projectCounts(p.id);
+  const archived = !!p.archived_at;
+  const lead = projectLead(p.id);
   const sessions = data.research_session.filter((s) => s.project_id === p.id).sort((a, b) => (b.session_date > a.session_date ? 1 : -1));
   const questions = data.research_question.filter((q) => q.project_id === p.id);
   const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => ({ ...byId('researcher', l.researcher_id), role: l.project_role }));
-  const methods = data.project_method.filter((l) => l.project_id === p.id).map((l) => byId('research_method', l.method_id)).filter(Boolean);
-  const archived = !!p.archived_at;
+  const methods = data.project_method.filter((l) => l.project_id === p.id).map((l) => byId('research_method', l.method_id));
+  const sentiment = sentimentCounts(p.id);
+  // How many sessions covered each research question (a junction-table count).
+  const coverage = questions.map((q, index) => ({
+    label: `Q${index + 1}. ${shorten(q.question_text, 46)}`,
+    value: data.session_question.filter((l) => l.question_id === q.id).length,
+    stage: 'finding',
+  }));
 
   view.innerHTML = `
-    ${archived ? `<div class="notice">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
+    ${archived ? `<div class="notice" role="status">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
     <section class="card project-head">
-      <div class="card-top" style="justify-content:flex-start">${statusPill(p.status)}${meta(`Started ${formatDate(p.start_date)}`, p.end_date ? `Ended ${formatDate(p.end_date)}` : '', projectLead(p.id) ? `Led by ${esc(projectLead(p.id).full_name)}` : '')}</div>
+      <div class="pills">${statusPill(p.status)}</div>
       <h1>${esc(p.title)}</h1>
-      <p class="lede">${esc(p.research_objective)}</p>
+      ${meta(`Started ${formatDate(p.start_date)}`, p.end_date ? `Ended ${formatDate(p.end_date)}` : '', lead ? `Led by ${esc(lead.full_name)}` : '')}
+      <p class="lede" style="margin-top:16px">${esc(p.research_objective)}</p>
       ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
       <div class="actions">
         <button class="btn" id="edit">${icon('pencil', 15)} Edit</button>
         <button class="btn" id="archive">${icon(archived ? 'archive-restore' : 'archive', 15)} ${archived ? 'Restore' : 'Archive'}</button>
         <a class="btn" href="#/trail?project=${p.id}">${icon('waypoints', 15)} Evidence trail</a>
+        <button class="btn" id="ask-project">${icon('message-circle', 15)} Summarise</button>
       </div>
     </section>
 
-    <section class="chain chain-large">
-      ${STAGES.map((s) => `<a class="chain-step stage-${s.type}" href="#/library?project=${p.id}&type=${s.type}"><strong>${counts[s.type]}</strong><span>${s.plural}</span></a>`).join('')}
-    </section>
+    <div class="grid-3 row-gap">
+      <section class="card"><div class="card-top"><h3>Evidence funnel</h3></div>${funnelChart(counts, `&project=${p.id}`)}</section>
+      <section class="card"><div class="card-top"><h3>How sessions felt</h3></div>
+        ${donutChart([
+          { label: 'Negative', value: sentiment.negative, color: CHART_COLORS.negative },
+          { label: 'Neutral', value: sentiment.neutral, color: CHART_COLORS.neutral },
+          { label: 'Positive', value: sentiment.positive, color: CHART_COLORS.positive },
+        ], 'observations')}</section>
+      <section class="card"><div class="card-top"><h3>Question coverage</h3></div>
+        <p class="card-note">Sessions that covered each research question.</p>
+        ${coverage.length ? barChart(coverage) : '<p class="quiet">No questions yet.</p>'}</section>
+    </div>
 
-    <div class="two-col">
+    <div class="grid-main row-gap">
       <section class="card">
         <div class="card-top"><h3>Sessions (${sessions.length})</h3>${archived ? '' : `<button class="btn btn-small" id="add-session">${icon('plus', 15)} Session</button>`}</div>
-        ${sessions.length ? `<ul class="rows">${sessions.map((s) => `<li><a href="#/sessions/${s.id}">
-          <span class="date-chip"><b>${new Date(s.session_date + 'T00:00').getDate()}</b>${new Date(s.session_date + 'T00:00').toLocaleString('en-GB', { month: 'short' })}</span>
-          <span class="row-text"><strong>${esc(s.title)}</strong>${meta(esc(byId('research_method', s.method_id)?.name), plural(data.observation.filter((o) => o.session_id === s.id).length, 'observation'))}</span>
-          ${s.status !== 'completed' ? statusPill(s.status) : `<span class="chev">${icon('chevron-right', 18)}</span>`}</a></li>`).join('')}</ul>`
-          : '<p class="quiet">No sessions yet.</p>'}
+        ${sessions.length ? `<ul class="rows">${sessions.map(sessionRow).join('')}</ul>` : '<p class="quiet">No sessions yet.</p>'}
       </section>
       <div class="stack">
         <section class="card">
@@ -98,14 +133,46 @@ function pageProject(params) {
         <section class="card">
           <div class="card-top"><h3>Team</h3></div>
           <ul class="team">${team.map((r) => `<li>${avatar(r.full_name, 36)}<span><strong>${esc(r.full_name)}</strong><small>${esc(capital(r.role))}</small></span></li>`).join('') || '<li class="quiet">Nobody assigned yet.</li>'}</ul>
-          <div class="team-methods"><p class="eyebrow">Methods</p><div class="pills" style="margin-top:12px">${methods.map((m) => pill(m.name, 'grey')).join('') || '<span class="quiet">None yet</span>'}</div></div>
+          <div class="card-foot"><div class="pills">${methods.map((m) => pill(m.name, 'grey')).join('') || '<span class="quiet">No methods yet</span>'}</div></div>
         </section>
       </div>
-    </div>`;
+    </div>
+
+    ${dbPanel(['Foreign key (1:N)', 'M:N junction table', 'Composite primary key', 'Trigger', 'UPDATE'], `
+-- Sessions belong to this project through a foreign key (one-to-many)
+select * from research_session where project_id = ${p.id} order by session_date desc;
+
+-- The team is a many-to-many relationship stored in a junction table
+select r.full_name, pr.project_role
+from project_researcher pr
+join researcher r on r.id = pr.researcher_id
+where pr.project_id = ${p.id};
+
+-- Archiving is an UPDATE. A trigger then blocks new work in this project.
+update research_project set archived_at = now() where id = ${p.id};`)}`;
 
   $('#edit').onclick = () => editProject(p);
   $('#archive').onclick = () => toggleArchive(p);
+  $('#ask-project').onclick = () => openAssistant(`Summarise ${p.title}`);
   if ($('#add-session')) $('#add-session').onclick = () => editSession(null, p.id);
   if ($('#add-question')) $('#add-question').onclick = () => editQuestion(p.id);
-  $$('[data-question]').forEach((b) => { b.onclick = () => editQuestion(p.id, byId('research_question', Number(b.dataset.question))); });
+  $$('[data-question]').forEach((button) => {
+    button.onclick = () => editQuestion(p.id, byId('research_question', Number(button.dataset.question)));
+  });
+}
+
+// One row in a list of sessions.
+function sessionRow(s) {
+  const date = new Date(s.session_date + 'T00:00');
+  const observations = data.observation.filter((o) => o.session_id === s.id).length;
+  return `<li><a href="#/sessions/${s.id}">
+    <span class="date-chip"><b>${date.getDate()}</b>${date.toLocaleString('en-GB', { month: 'short' })}</span>
+    <span class="row-text"><strong>${esc(s.title)}</strong>${meta(esc(byId('research_method', s.method_id).name), plural(observations, 'observation'))}</span>
+    ${s.status !== 'completed' ? statusPill(s.status) : `<span class="chev">${icon('chevron-right', 18)}</span>`}</a></li>`;
+}
+
+// Shared "not found" page.
+function notFound(what, backHref, backLabel) {
+  setCrumbs([`${what} not found`]);
+  view.innerHTML = `<div class="empty"><h2>${what} not found</h2><p>It may have been removed, or the link is wrong.</p><a class="btn" href="${backHref}">Back to ${backLabel}</a></div>`;
 }

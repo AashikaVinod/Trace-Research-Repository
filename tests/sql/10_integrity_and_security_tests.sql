@@ -127,6 +127,23 @@ end $$;
 select pg_temp.expect_ok('RPC: trace_is_editor is callable by visitors', 'anon', null,
   $q$select public.trace_is_editor()$q$);
 
+-- ---- Views and the recursive lineage function ------------------------
+do $$
+declare n int;
+begin
+  select count(*) into n from public.trace_lineage('design_decision', 1) where record_type = 'observation';
+  if n = 4 then raise notice 'PASS  VIEW+CTE: decision 1 traces back to 4 observations';
+  else raise exception 'FAIL  lineage found % observations', n; end if;
+  select count(*) into n from public.v_evidence_gap where record_type = 'recommendation';
+  if n = 2 then raise notice 'PASS  VIEW: gap view finds the 2 recommendations without a decision';
+  else raise exception 'FAIL  gap view found %', n; end if;
+  select observations into n from public.v_decision_strength where id = 1;
+  if n = 4 then raise notice 'PASS  VIEW: decision strength counts distinct observations';
+  else raise exception 'FAIL  strength %', n; end if;
+end $$;
+select pg_temp.expect_ok('VIEW: visitors can read views and call trace_lineage', 'anon', null,
+  $q$select (select count(*) from public.v_project_summary) + (select count(*) from public.trace_lineage('finding', 1))$q$);
+
 -- Writes performed directly as the API role (not inside a helper function),
 -- exactly as PostgREST runs them, so trigger permissions are exercised.
 set local role authenticated;

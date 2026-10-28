@@ -15,17 +15,27 @@ The build environment could not reach `supabase.co` or `vercel.com`. Supabase mo
 
 The browser was headless Chromium running the vendored `supabase-js` 2.117.3, with the production Content-Security-Policy from `vercel.json` applied.
 
-## Results (28 October 2026, after the UI audit and redesign)
+## Results (28 October 2026, latest version)
 
 | Suite | Result |
 | --- | --- |
-| SQL integrity and security tests (`tests/run-sql-tests.sh`) | 29/29 passed |
-| Browser workflow, sample mode (`tests/e2e.mjs`) | 15/15 passed |
-| Browser workflow, Supabase replica, signed in as editor | 16/16 passed. The test's project and decision rows were confirmed in PostgreSQL. |
-| Opening `index.html` directly as a file | Home page loads the sample study with no errors |
-| Phone (390 px) and tablet layouts | No horizontal overflow; menu drawer works |
+| SQL integrity, security and view tests (`tests/run-sql-tests.sh`) | 33/33 passed |
+| Every user flow, sample mode (`tests/e2e.mjs`) | 26/26 passed |
+| Every user flow, Supabase replica, including sign-in (wrong password, then editor) | 27/27 passed. The test's project and decision rows were confirmed in PostgreSQL. |
+| Layout at 390 px and 820 px wide, all 11 pages | No sideways scrolling |
+| Colour contrast of all 17 palette text pairs | All pass WCAG AA |
+| Reduced motion, keyboard focus, skip link, assistant focus handling | Pass |
 
-Not re-tested after the redesign: the signed-out visitor checks (sign-in prompt, wrong-password message, non-editor view). The database-side protection they relied on is still covered by the SQL tests.
+The flows covered are:
+- creating and editing projects, questions, sessions, participants, team members, methods and segments;
+- all five evidence steps, with linking and unlinking;
+- the trail and its back navigation;
+- search, tabs and filters;
+- duplicate refusal, archive with Undo, and restore;
+- Ask TRACE and every query in the Database page;
+- keyboard shortcuts, pausing the background, and resetting the sample.
+
+**Not tested:** the optional AI answers (`api/ask.js`), because no API key was available; real Supabase Auth; the real Vercel deployment; real screen readers.
 
 ## The 20 required checks
 
@@ -48,7 +58,7 @@ Not re-tested after the redesign: the signed-out visitor checks (sign-in prompt,
 | 15 | Dashboard metrics match the database | 🟡 ✅ | Dashboard total equals the project list; seed counts match SQL |
 | 16 | Invalid form data is rejected | ✅ | Short title, short objective, end date before start, bad participant code |
 | 17 | Database errors are communicated clearly | 🟡 ✅ | Duplicate title message, permission message, wrong password message |
-| 18 | Missing or unsafe configuration is handled | 🟡 | Empty config gives sample mode (tested). The checks for half-filled, secret or `service_role` keys (`configProblem()` in `js/db.js`) were not automatically tested after the redesign. |
+| 18 | Missing or unsafe configuration is handled | 🟡 | Empty config gives sample mode (tested). The checks for half-filled, secret or `service_role` keys (`configProblem()` in `js/db.js`) are not automatically tested. |
 | 19 | Deployed site loads and assets work | ⬜ | Needs the Vercel URL |
 | 20 | Deployed site performs a real database operation | ⬜ | Needs real Supabase and Vercel |
 

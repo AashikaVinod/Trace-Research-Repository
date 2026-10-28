@@ -18,6 +18,12 @@ begin
 end
 $$;
 
+-- Views and the lineage function first (they depend on the tables).
+drop function if exists public.trace_lineage(text, bigint);
+drop view if exists public.v_decision_strength, public.v_participants_by_segment, public.v_sessions_by_month,
+  public.v_sentiment_by_project, public.v_evidence_gap, public.v_project_summary, public.v_dashboard,
+  public.v_evidence_edge, public.v_evidence_record;
+
 -- Children before parents; no CASCADE, so unrelated objects are never removed.
 drop table if exists
   public.recommendation_decision, public.insight_recommendation, public.finding_insight,

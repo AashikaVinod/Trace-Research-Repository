@@ -138,6 +138,23 @@ Beyond the primary keys and unique indexes, there are indexes on:
 - every foreign key not already the leading column of another index (`research_session.method_id`, `researcher_id`, and the second column of every junction table);
 - `research_session.session_date`, `research_project.created_at` and `insight.created_at`, which back the dashboard's recent lists.
 
+## Views and functions (sql/06_views.sql)
+
+| Object | Technique | Used for |
+| --- | --- | --- |
+| `v_evidence_record` | UNION ALL of the five record tables | Search, building block for the views below |
+| `v_evidence_edge` | UNION ALL of the four evidence junction tables | Turns the chain into a graph |
+| `v_dashboard` | Scalar aggregate subqueries | Home totals |
+| `v_project_summary` | LEFT JOIN + correlated subqueries | Projects list |
+| `v_evidence_gap` | Anti-join with NOT EXISTS | Gaps to close |
+| `v_sentiment_by_project` | GROUP BY + FILTER | Sentiment charts |
+| `v_sessions_by_month` | date_trunc + GROUP BY | Sessions per month |
+| `v_participants_by_segment` | LEFT JOIN through a junction + GROUP BY | Segment chart |
+| `v_decision_strength` | Five-table JOIN + COUNT(DISTINCT) | Strongest decisions |
+| `trace_lineage(type, id)` | WITH RECURSIVE over `v_evidence_edge` | Evidence trail |
+
+All views use `security_invoker = true`, so Row Level Security still applies through them.
+
 ## Naming conventions
 
 - Tables are singular nouns in `snake_case`. Junction tables combine both table names, in the order of the evidence chain.

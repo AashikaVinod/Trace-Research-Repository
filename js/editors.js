@@ -3,8 +3,15 @@
 // Each form saves through db.js, then re-draws the current page.
 // ===================================================================
 
-const options = (rows, label = (r) => r.title, hint) => rows.map((r) => ({ value: r.id, label: label(r), hint: hint ? hint(r) : '' }));
-const words = (list) => list.map((w) => ({ value: w, label: capital(w) }));
+// Turns table rows into form options: [{ value: id, label, hint }]
+function options(rows, label = (row) => row.title, hint = null) {
+  return rows.map((row) => ({ value: row.id, label: label(row), hint: hint ? hint(row) : '' }));
+}
+
+// Turns a list of words into form options: ['low', 'high'] -> [{ value: 'low', label: 'Low' }, ...]
+function words(list) {
+  return list.map((word) => ({ value: word, label: capital(word) }));
+}
 
 async function editProject(project = null) {
   if (!(await requireEditor())) return;
@@ -37,8 +44,17 @@ async function toggleArchive(project) {
     archiving ? 'Its records stay readable, but it is hidden from lists and accepts no new work until restored.' : 'It will appear in lists again and accept new work.',
     archiving ? 'Archive' : 'Restore');
   if (!ok) return;
-  try { await setArchived(project.id, archiving); toast(archiving ? 'Project archived.' : 'Project restored.'); render(); }
-  catch (e) { toast(e.message, 'error'); }
+  try {
+    await setArchived(project.id, archiving);
+    render();
+    // Undo gives people a way back (HCI: user control and freedom).
+    toast(archiving ? 'Project archived.' : 'Project restored.', 'success', {
+      label: 'Undo',
+      run: async () => { await setArchived(project.id, !archiving); toast('Change undone.'); render(); },
+    });
+  } catch (error) {
+    toast(error.message, 'error');
+  }
 }
 
 async function editQuestion(projectId, question = null) {
@@ -182,7 +198,7 @@ function openNewMenu() {
     ['participant', 'user-plus', 'Participant', 'Anonymous, by code'],
   ];
   const hints = { observation: 'What someone did or said', finding: 'A pattern across sessions', insight: 'Why the pattern matters', recommendation: 'What should change', design_decision: 'What the team decided' };
-  const evidence = STAGES.map((s) => [s.type, 'file-text', s.label, hints[s.type]]);
+  const evidence = STAGES.map((s) => [s.type, 'file-text', `${s.step}. ${s.label}`, hints[s.type]]);
   const item = ([key, ic, label, hint]) => `
       <button class="new-item ${STAGE[key] ? `stage-${key}` : ''}" data-new="${key}">
         <span class="new-icon">${icon(ic)}</span><span><strong>${esc(label)}</strong><small>${esc(hint)}</small></span>
@@ -191,8 +207,8 @@ function openNewMenu() {
     title: 'Add to TRACE',
     wide: true,
     body: `<div class="new-menu">
-      <p class="eyebrow new-menu-label">Study</p>${study.map(item).join('')}
-      <p class="eyebrow new-menu-label">Evidence</p>${evidence.map(item).join('')}
+      <p class="label-sm">Study</p>${study.map(item).join('')}
+      <p class="label-sm">Evidence, in order</p>${evidence.map(item).join('')}
     </div>`,
   });
   dialog.addEventListener('click', (e) => {

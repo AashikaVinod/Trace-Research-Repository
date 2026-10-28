@@ -16,3 +16,8 @@
 
 const SUPABASE_URL = '';
 const SUPABASE_KEY = ''; // the publishable key ("sb_publishable_...") or legacy anon key
+
+// Ask TRACE (the assistant button in the top bar) always answers from your
+// data, with no AI needed. Set this to true ONLY after deploying to Vercel
+// with an ANTHROPIC_API_KEY environment variable (see README, "AI answers").
+const AI_ASSISTANT = false;
