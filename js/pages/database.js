@@ -161,6 +161,11 @@ function pageDatabase() {
   });
 }
 
+// One number in the summary row at the top.
+function statLink(href, label, value, note) {
+  return `<a class="stat" href="${href}"><span>${label}</span><strong>${value}</strong><small>${note}</small></a>`;
+}
+
 // Shows query results as a small table.
 function resultTable(rows) {
   if (rows.length === 0) return '<p class="quiet">No rows.</p>';

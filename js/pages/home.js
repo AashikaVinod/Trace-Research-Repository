@@ -1,5 +1,7 @@
 // ===================================================================
-// Home page: greeting, totals and charts that summarise the research.
+// Home: an editorial front page for the research.
+// A headline built from real numbers, the latest decision as the lead
+// story, a small "in numbers" box, and the evidence pipeline.
 // ===================================================================
 
 function pageHome() {
@@ -7,144 +9,122 @@ function pageHome() {
   const projects = data.research_project;
 
   if (projects.length === 0) {
-    view.innerHTML = `
-      <section class="hero"><h1>Welcome to TRACE.</h1><p>Every design decision has a story.</p></section>
-      <div class="empty row-gap">
-        <h2>There's no research here yet</h2>
-        <p>Create a project to get started.</p>
-        <button class="btn btn-dark" id="first-project">${icon('plus', 16)} New project</button>
-      </div>`;
+    view.innerHTML = `<div class="empty"><h2>There's no research here yet</h2><p>Create a project to get started.</p>
+      <button class="btn btn-dark" id="first-project">${icon('plus', 16)} New project</button></div>`;
     $('#first-project').onclick = () => editProject();
     return;
   }
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstStart = projects.map((p) => p.start_date).sort()[0];
-  const completed = data.research_session.filter((s) => s.status === 'completed').length;
-  const archived = projects.length - activeProjects().length;
-  const usedSegments = new Set(data.participant_segment.map((l) => l.segment_id)).size;
-
-  // The newest decision and the evidence behind it.
-  const newestDecision = [...data.design_decision].sort((a, b) => (b.created_at > a.created_at ? 1 : -1))[0];
-  const decisionTrail = newestDecision ? lineage('design_decision', newestDecision.id) : null;
-
-  const sentiment = sentimentCounts();
+  const decisions = data.design_decision.length;
+  const lead = [...data.design_decision].sort((a, b) => (b.created_at > a.created_at ? 1 : -1))[0];
+  const story = lineage('design_decision', lead.id);
+  const leadProject = byId('research_project', lead.project_id);
+  const sessionsBehind = new Set(story.byStage.observation.map((o) => o.session_id)).size;
+  const recentSessions = [...data.research_session].sort((a, b) => (b.session_date > a.session_date ? 1 : -1)).slice(0, 4);
   const recentInsights = [...data.insight].sort((a, b) => (b.created_at > a.created_at ? 1 : -1)).slice(0, 4);
+  const sentiment = sentimentCounts();
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // The evidence chain behind the lead story, written out like a byline.
+  const chain = STAGES.map((s) => `<span><b>${story.byStage[s.type].length}</b> ${story.byStage[s.type].length === 1 ? s.label.toLowerCase() : s.plural.toLowerCase()}</span>`)
+    .join(`<i aria-hidden="true">${icon('arrow-right', 14)}</i>`);
 
   view.innerHTML = `
-    ${introCard()}
-    <div class="hero-grid">
-      <section class="hero">
-        <span class="label-sm">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-        <h1>${greeting}.</h1>
-        <p>Since ${formatDate(firstStart)}, your team has run ${plural(completed, 'session')} and turned ${plural(data.observation.length, 'observation')} into ${plural(data.design_decision.length, 'design decision')}.</p>
-        <form class="hero-search" id="hero-search" role="search">
-          ${icon('search', 18)}
-          <label class="sr" for="hero-q">Search research</label>
-          <input id="hero-q" type="search" placeholder="Search what participants said and did">
-          <button class="btn btn-dark" type="submit">Search</button>
-        </form>
-        <div class="hero-actions">
-          <button class="suggestion" data-ask="What are the key insights?">${icon('message-circle', 14)} What are the key insights?</button>
-          <button class="suggestion" data-ask="Where are the gaps in our evidence?">Where are the gaps?</button>
+    ${introNote()}
+    <header class="masthead">
+      <p class="kicker">The research desk <span>${today}</span></p>
+      <h1>${plural(decisions, 'design decision')}, each traced back to what people actually did and said.</h1>
+    </header>
+
+    <div class="front">
+      <article class="lead-story">
+        <p class="kicker">Latest decision <span>${esc(leadProject.title)}</span></p>
+        <h2><a href="#/trail/design_decision/${lead.id}">${esc(lead.title)}</a></h2>
+        <p class="standfirst">${esc(lead.description)}</p>
+        <p class="byline">${chain}</p>
+        <p class="lead-foot">${statusPill(lead.status)}
+          <span class="quiet">Rests on ${plural(story.byStage.observation.length, 'observation')} from ${plural(sessionsBehind, 'session')}.</span>
+          <a class="text-link" href="#/trail/design_decision/${lead.id}">Read the full trail ${icon('arrow-right', 14)}</a></p>
+      </article>
+
+      <aside class="fact-box" aria-label="In numbers">
+        <p class="kicker">In numbers</p>
+        <dl>
+          ${fact('#/projects', 'Projects', projects.length, `${activeProjects().length} active`)}
+          ${fact('#/sessions', 'Sessions', data.research_session.length, `${data.research_session.filter((s) => s.status === 'planned').length} planned`)}
+          ${fact('#/people', 'Participants', data.participant.length, 'by code only')}
+          ${fact('#/library?type=insight', 'Insights', data.insight.length, `from ${plural(data.finding.length, 'finding')}`)}
+        </dl>
+        <div class="mood">
+          <p class="kicker">How sessions felt</p>
+          ${sentimentBar(sentiment)}
         </div>
-      </section>
-      ${newestDecision ? `<a class="spotlight" href="#/trail/design_decision/${newestDecision.id}">
-        <span class="label-sm">Latest decision</span>
-        <h3>${esc(newestDecision.title)}</h3>
-        <p>Backed by ${plural(decisionTrail.byStage.observation.length, 'observation')} from ${plural(new Set(decisionTrail.byStage.observation.map((o) => o.session_id)).size, 'session')}.</p>
-        <div class="spot-chain" aria-hidden="true">${STAGES.map((s) => `<span class="stage-${s.type}" style="opacity:${decisionTrail.byStage[s.type].length ? 1 : 0.25}"></span>`).join('')}</div>
-        <span class="btn btn-light btn-small">${icon('waypoints', 15)} View evidence trail</span>
-      </a>` : ''}
+      </aside>
     </div>
 
-    <section class="stats" aria-label="Totals">
-      ${statLink('#/projects', 'Projects', projects.length, archived ? `${activeProjects().length} active, ${archived} archived` : 'All active')}
-      ${statLink('#/sessions', 'Sessions', data.research_session.length, `${data.research_session.filter((s) => s.status === 'planned').length} planned`)}
-      ${statLink('#/people', 'Participants', data.participant.length, `Across ${plural(usedSegments, 'segment')}`)}
-      ${statLink('#/library?type=insight', 'Insights', data.insight.length, `From ${plural(data.finding.length, 'finding')}`)}
+    <section class="pipeline-section" aria-labelledby="pipeline-title">
+      <div class="section-head"><h2 id="pipeline-title">From observation to decision</h2><a class="text-link" href="#/trail">Open the evidence trail ${icon('arrow-right', 14)}</a></div>
+      <ol class="pipeline">${STAGES.map((s) => `
+        <li class="stage-${s.type}"><a href="#/library?type=${s.type}">
+          <span class="pipe-step">${s.step}</span>
+          <strong>${data[s.type].length}</strong>
+          <span class="pipe-name">${s.plural}</span>
+          ${s.step < 5 ? `<span class="pipe-used">${linkedPercent(s.type)}% carried forward</span>` : '<span class="pipe-used">decided</span>'}
+        </a></li>`).join('')}
+      </ol>
     </section>
 
-    <section class="card" aria-labelledby="flow-title">
-      <div class="card-top"><h3 id="flow-title">How evidence becomes decisions</h3><a class="small" href="#/trail">Open the evidence trail</a></div>
-      ${evidenceFlow()}
-    </section>
-
-    <div class="grid-3 row-gap">
-      <article class="card">
-        <div class="card-top"><h3>Sessions per month</h3><a class="small" href="#/sessions">View all</a></div>
-        ${columnChart(sessionsByMonth().map((m) => ({ label: m.label, value: m.sessions })))}
-      </article>
-      <article class="card">
-        <div class="card-top"><h3>How sessions felt</h3></div>
-        ${donutChart([
-          { label: 'Negative', value: sentiment.negative, color: CHART_COLORS.negative },
-          { label: 'Neutral', value: sentiment.neutral, color: CHART_COLORS.neutral },
-          { label: 'Positive', value: sentiment.positive, color: CHART_COLORS.positive },
-        ], 'observations')}
-      </article>
-      <article class="card">
-        <div class="card-top"><h3>Latest insights</h3><a class="small" href="#/library?type=insight">View all</a></div>
-        <ul class="rows">${recentInsights.map((i) => `<li><a href="#/record/insight/${i.id}" class="stage-insight">
-          <span class="dot"></span>
-          <span class="row-text"><strong>${esc(i.title)}</strong>${meta(esc(byId('research_project', i.project_id).title), `${esc(i.impact)} impact`)}</span></a></li>`).join('')}
+    <div class="columns-2">
+      <section>
+        <div class="section-head"><h2>Recent sessions</h2><a class="text-link" href="#/sessions">All sessions</a></div>
+        <ul class="index">${recentSessions.map((s) => `<li><a href="#/sessions/${s.id}">
+          <time>${formatDate(s.session_date)}</time>
+          <span><strong>${esc(s.title)}</strong>${meta(esc(byId('research_project', s.project_id).title), esc(byId('research_method', s.method_id).name))}</span>
+          ${s.status === 'planned' ? statusPill('planned') : ''}</a></li>`).join('')}
         </ul>
-      </article>
+      </section>
+      <section>
+        <div class="section-head"><h2>Latest insights</h2><a class="text-link" href="#/library?type=insight">All insights</a></div>
+        <ul class="index index-serif">${recentInsights.map((i) => `<li><a href="#/record/insight/${i.id}">
+          <span><strong>${esc(i.title)}</strong>${meta(esc(byId('research_project', i.project_id).title), `${esc(i.impact)} impact`)}</span></a></li>`).join('')}
+        </ul>
+      </section>
     </div>
 
-    ${dbPanel(['Aggregate functions (COUNT)', 'View', 'GROUP BY', 'FILTER', 'date_trunc'], `
--- The totals at the top come from one view (sql/06_views.sql)
+    ${dbPanel(['Aggregate functions (COUNT)', 'View', 'Recursive CTE', 'GROUP BY'], `
+-- The numbers come from one view (sql/06_views.sql)
 select * from v_dashboard;
 
--- The sentiment donut groups observations
-select sentiment, count(*) from observation group by sentiment;
+-- The lead story's evidence chain comes from the recursive lineage function
+select record_type, count(*) from trace_lineage('design_decision', ${lead.id}) group by record_type;
 
--- Sessions per month
-select to_char(date_trunc('month', session_date), 'YYYY-MM') as month, count(*)
-from research_session group by 1 order by 1;`)}`;
+-- How sessions felt
+select sentiment, count(*) from observation group by sentiment;`)}`;
 
-  $('#hero-search').onsubmit = (event) => {
-    event.preventDefault();
-    go('/library?q=' + encodeURIComponent($('#hero-q').value.trim()));
-  };
-  $$('[data-ask]', view).forEach((button) => { button.onclick = () => openAssistant(button.dataset.ask); });
   if ($('#intro-close')) {
     $('#intro-close').onclick = () => { localStorage.setItem('trace.intro', 'done'); render(); };
   }
 }
 
-// The five steps as connected boxes. Each arrow shows how much of a step
-// is used by the next one, so weak links stand out at a glance.
-function evidenceFlow() {
-  const hints = { observation: 'What people did and said', finding: 'Patterns across sessions', insight: 'Why they matter', recommendation: 'What should change', design_decision: 'What the team chose' };
-  let html = '<div class="flow">';
-  for (const stage of STAGES) {
-    html += `<a class="flow-node stage-${stage.type}" href="#/library?type=${stage.type}">
-      <span class="step">${stage.step}</span><strong>${data[stage.type].length}</strong><span>${stage.plural}</span><small>${hints[stage.type]}</small></a>`;
-    if (stage.step < 5) {
-      html += `<span class="flow-link" title="Share of ${stage.plural.toLowerCase()} used by the next step"><span class="line"></span>${linkedPercent(stage.type)}% used</span>`;
-    }
-  }
-  return html + '</div>';
+function fact(href, label, value, note) {
+  return `<a class="fact" href="${href}"><dt>${label}</dt><dd><strong>${value}</strong><span>${note}</span></dd></a>`;
 }
 
-function statLink(href, label, value, note) {
-  return `<a class="stat" href="${href}"><span>${label}</span><strong>${value}</strong><small>${note}</small></a>`;
+// A thin bar split into negative / neutral / positive, with a legend.
+function sentimentBar(counts) {
+  const total = counts.negative + counts.neutral + counts.positive || 1;
+  const parts = [['negative', CHART_COLORS.negative], ['neutral', CHART_COLORS.neutral], ['positive', CHART_COLORS.positive]];
+  return `<div class="mix" role="img" aria-label="${counts.negative} negative, ${counts.neutral} neutral, ${counts.positive} positive">
+      ${parts.map(([mood, color]) => `<i style="width:${(counts[mood] / total) * 100}%;background:${color}"></i>`).join('')}</div>
+    <div class="mix-legend">${parts.map(([mood]) => `<span><b>${counts[mood]}</b> ${mood}</span>`).join('')}</div>`;
 }
 
-// A one-time welcome that explains the five steps (HCI: help and documentation).
-function introCard() {
+// A one-line welcome that explains the idea (HCI: help and documentation).
+function introNote() {
   let seen = false;
   try { seen = localStorage.getItem('trace.intro') === 'done'; } catch (error) { seen = false; }
   if (seen) return '';
-  return `<section class="intro" aria-label="How TRACE works">
-    ${logo(44)}
-    <div>
-      <h2>How TRACE works</h2>
-      <p class="muted">Research moves through five steps. Each step links to the one before it, so any decision can be traced back to real evidence.</p>
-      <div class="steps">${STAGES.map((s) => `<span class="pill pill-${['purple', 'blue', 'green', 'orange', 'dark'][s.step - 1]}">${s.step}. ${s.label}</span>`).join('')}</div>
-    </div>
-    <button class="icon-btn close" id="intro-close" aria-label="Dismiss">${icon('x')}</button>
-  </section>`;
+  return `<p class="intro-note">${logo(20)}
+    <span><strong>How TRACE works:</strong> research moves through five steps, from observation to decision. Each step links to the one before, so every decision can be traced back to real evidence.</span>
+    <button class="icon-btn" id="intro-close" aria-label="Dismiss">${icon('x', 16)}</button></p>`;
 }

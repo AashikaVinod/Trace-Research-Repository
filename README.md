@@ -39,18 +39,18 @@ More documents:
 
 | Page | What you can do | Main DBMS idea |
 | --- | --- | --- |
-| **Home** | Totals, evidence health rings, sessions per month, sentiment donut, featured project, latest decision | Aggregates, views, GROUP BY |
+| **Home** | A front page: a headline from real numbers, the latest decision with its evidence chain, an "in numbers" box, how sessions felt, and the five-step pipeline | Aggregates, views, recursive CTE |
 | **Projects** | Search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment and question coverage. | JOINs, soft delete, triggers |
 | **Research library** | Folder tabs for the five evidence types, search, project filter, document cards | UNION ALL view, WHERE / ILIKE |
 | **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
 | **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
 | **Database** | Schema diagram, rows per table, a feature-to-concept map, and a query lab that runs the real views | Everything, in one place |
-| **Ask TRACE** | A chat panel for quick answers: key insights, strongest decisions, gaps, pain points, project summaries | Each answer names the query it used |
+| **Quick answers** | A reference panel: pick a common question or type your own (key insights, strongest decisions, gaps, pain points, project summaries) | Each answer names the query it used |
 
 Every page ends with a **"How the database does this"** panel that names the concepts behind it and shows the SQL.
 
-**Keyboard shortcuts:** `/` search, `N` add something new, `A` Ask TRACE, `?` show shortcuts, `Esc` close.
+**Keyboard shortcuts:** `/` search, `N` add something new, `A` quick answers, `?` show shortcuts, `Esc` close.
 
 **Demo data:** TRACE opens with a fictional sample study (the same rows as `sql/04_seed_data.sql`). Anything you add is kept in this browser with localStorage, so it is still there after a reload. To start again from the original sample, clear the site's data in your browser settings.
 
@@ -82,7 +82,7 @@ js/helpers.js               esc() for safe HTML, icons, dates, toasts, dialogs, 
 js/charts.js                bar, column, donut, ring and funnel charts made from HTML + CSS
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
-js/assistant.js             Ask TRACE
+js/assistant.js             Quick answers
 js/pages/*.js               one file per page: home, projects, library, trail, sessions, people, database
 js/app.js                   start-up, sidebar, shortcuts, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
@@ -138,13 +138,13 @@ This is designed into `sql/03_security.sql` and tested by the SQL tests. The bro
 
 ## Optional: real AI answers
 
-**Ask TRACE** works without any AI: it answers from your data using the same queries as the charts. To have Claude answer instead, using a short summary of your research as context:
+**Quick answers** works without any AI: it answers from your data using the same queries as the charts. To have Claude answer instead, using a short summary of your research as context:
 
 1. Deploy to Vercel (see below).
 2. In Vercel → Project → **Settings → Environment Variables**, add `ANTHROPIC_API_KEY` (from <https://console.anthropic.com>). Optionally add `ANTHROPIC_MODEL`; the default in `api/ask.js` is `claude-haiku-5-5`. Check current model names at <https://docs.claude.com/en/api/overview> first.
 3. Set `const AI_ASSISTANT = true;` in `js/config.js`, commit and push.
 
-The key stays on the server and never reaches the browser. If the AI can't be reached, Ask TRACE says so and answers from the data instead. Anyone who can open the site can use the endpoint, and that spends your API credit, so turn it off after the demo. **This AI path has not been tested**, because no API key was available while building TRACE.
+The key stays on the server and never reaches the browser. If the AI can't be reached, Quick answers says so and answers from the data instead. Anyone who can open the site can use the endpoint, and that spends your API credit, so turn it off after the demo. **This AI path has not been tested**, because no API key was available while building TRACE.
 
 ## Push to GitHub and deploy on Vercel
 

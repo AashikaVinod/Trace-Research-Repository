@@ -40,8 +40,8 @@ const project = `Demo project ${RUN}`;
 await step('opens with the sample study, the logo and totals', async () => {
   await open('/');
   check(await page.locator('.brand img').isVisible(), 'logo');
-  check(Number(await page.locator('.stat strong').first().textContent()) >= 4, 'project total');
-  check(await page.locator('.donut').count() === 1 && await page.locator('.columns').count() === 1, 'charts drawn');
+  check(Number(await page.locator('.fact strong').first().textContent()) >= 4, 'project total');
+  check(await page.locator('.pipeline li').count() === 5 && await page.locator('.lead-story').count() === 1, 'front page drawn');
 });
 
 
@@ -260,13 +260,13 @@ await step('archive, undo, archive again, then restore', async () => {
 });
 
 // ---------- Assistant and database ----------
-await step('Ask TRACE answers suggested and typed questions', async () => {
+await step('Quick answers: common and typed questions', async () => {
   await page.locator('#ask-btn').click();
   await page.locator('#ask [data-ask="What are the key insights?"]').click();
-  await page.locator('.msg-bot', { hasText: 'most important' }).waitFor();
+  await page.locator('.answer', { hasText: 'most important' }).waitFor();
   await page.locator('#ask-input').fill('Tell me about grocery checkout');
   await page.locator('#ask-input').press('Enter');
-  await page.locator('.msg-bot a', { hasText: 'Grocery checkout friction' }).first().waitFor();
+  await page.locator('.answer a', { hasText: 'Grocery checkout friction' }).first().waitFor();
   await page.locator('#ask-close').click();
 });
 

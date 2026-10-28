@@ -1,5 +1,6 @@
 // ===================================================================
-// assistant.js - "Ask TRACE", a chat panel for quick answers.
+// assistant.js - "Quick answers": a panel you consult like a reference
+// desk. Pick a common question or type your own.
 //
 // By default the answers come straight from your data (counts, joins
 // and groupings over the loaded tables), so it always works, even
@@ -24,20 +25,21 @@ function buildAssistant() {
   const panel = document.createElement('aside');
   panel.className = 'ask';
   panel.id = 'ask';
-  panel.setAttribute('aria-label', 'Ask TRACE');
+  panel.setAttribute('aria-label', 'Quick answers');
   panel.hidden = true;
   panel.innerHTML = `
     <header class="ask-head">
-      ${logo(30)}
-      <div><h2>Ask TRACE</h2><p>${AI_ON ? 'AI answers from a summary of your research' : 'Quick answers from your research data'}</p></div>
-      <button class="icon-btn" id="ask-close" aria-label="Close Ask TRACE">${icon('x')}</button>
+      <div><h2>Quick answers</h2><p>${AI_ON ? 'Written by AI from a summary of your research' : 'Straight from your research data'}</p></div>
+      <button class="icon-btn" id="ask-close" aria-label="Close quick answers">${icon('x')}</button>
     </header>
-    <div class="ask-log" id="ask-log" aria-live="polite"></div>
-    <div class="ask-suggest" id="ask-suggest">${ASK_SUGGESTIONS.map((q) => `<button class="suggestion" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <div class="ask-log" id="ask-log" aria-live="polite">
+      <p class="kicker">Common questions</p>
+      <ul class="ask-index">${ASK_SUGGESTIONS.map((q) => `<li><button data-ask="${esc(q)}">${esc(q)}${icon('arrow-right', 14)}</button></li>`).join('')}</ul>
+    </div>
     <form class="ask-form" id="ask-form">
-      <label class="sr" for="ask-input">Ask a question</label>
-      <input class="input" id="ask-input" placeholder="Ask about insights, decisions, gaps…" autocomplete="off">
-      <button class="btn btn-dark" type="submit" aria-label="Send">${icon('send', 16)}</button>
+      <label class="sr" for="ask-input">Ask your own question</label>
+      <input class="input" id="ask-input" placeholder="Ask your own question" autocomplete="off">
+      <button class="btn btn-dark" type="submit">Ask</button>
     </form>`;
   document.body.append(panel);
 
@@ -49,13 +51,11 @@ function buildAssistant() {
     $('#ask-input').value = '';
   };
   panel.addEventListener('click', (event) => {
-    const chip = event.target.closest('[data-ask]');
-    if (chip) ask(chip.dataset.ask);
+    const item = event.target.closest('[data-ask]');
+    if (item) ask(item.dataset.ask);
     if (event.target.closest('a')) closeAssistant();
   });
   panel.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeAssistant(); });
-
-  addBotMessage(`Hi! I can answer quick questions about your research. Try one of the suggestions below.`, '');
 }
 
 function openAssistant(question = '') {
@@ -73,34 +73,33 @@ function closeAssistant() {
   $('#ask-btn').focus();
 }
 
-function addUserMessage(text) {
-  $('#ask-log').insertAdjacentHTML('beforeend', `<div class="msg msg-user">${esc(text)}</div>`);
+// Each answer is filed as an entry: the question, the answer, its source.
+function addAnswer(question, html, source) {
+  const entry = document.createElement('article');
+  entry.className = 'answer';
+  entry.innerHTML = `<p class="kicker">${esc(question)}</p><div class="answer-body">${html}</div>${source ? `<p class="answer-source">${source}</p>` : ''}`;
+  $('#ask-log').append(entry);
+  entry.scrollIntoView({ block: 'nearest' });
+  return entry;
 }
 
-function addBotMessage(html, source) {
-  $('#ask-log').insertAdjacentHTML('beforeend', `<div class="msg msg-bot">${html}${source ? `<p class="msg-source">${source}</p>` : ''}</div>`);
-  const log = $('#ask-log');
-  log.scrollTop = log.scrollHeight;
-}
-
-async function ask(question) {
-  addUserMessage(question);
+function ask(question) {
   if (AI_ON) {
-    $('#ask-log').insertAdjacentHTML('beforeend', '<p class="typing" id="typing">Thinking…</p>');
-    try {
-      const answer = await askAi(question);
-      $('#typing').remove();
-      addBotMessage(answer, 'Answered by Claude (AI) from a summary of your research. Double-check important details.');
-      return;
-    } catch (error) {
-      $('#typing').remove();
-      const reply = answerFromData(question);
-      addBotMessage(reply.html, `The AI service didn't answer (${esc(error.message)}), so this answer comes straight from your data. ${reply.source}`);
-      return;
-    }
+    const entry = addAnswer(question, '<p class="quiet">Looking it up…</p>', '');
+    askAi(question)
+      .then((answer) => {
+        $('.answer-body', entry).innerHTML = answer;
+        entry.insertAdjacentHTML('beforeend', '<p class="answer-source">Written by Claude (AI) from a summary of your research. Double-check important details.</p>');
+      })
+      .catch((error) => {
+        const reply = answerFromData(question);
+        $('.answer-body', entry).innerHTML = reply.html;
+        entry.insertAdjacentHTML('beforeend', `<p class="answer-source">The AI service didn't answer (${esc(error.message)}), so this comes straight from your data. ${reply.source}</p>`);
+      });
+    return;
   }
   const reply = answerFromData(question);
-  addBotMessage(reply.html, reply.source);
+  addAnswer(question, reply.html, reply.source);
 }
 
 // ----- Answers from the data -------------------------------------------

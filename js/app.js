@@ -106,7 +106,7 @@ function showShortcuts() {
     body: `<ul class="shortcuts">
       <li>Search research <kbd>/</kbd></li>
       <li>Add something new <kbd>N</kbd></li>
-      <li>Ask TRACE <kbd>A</kbd></li>
+      <li>Quick answers <kbd>A</kbd></li>
       <li>Show these shortcuts <kbd>?</kbd></li>
       <li>Close a dialog or panel <kbd>Esc</kbd></li>
     </ul>`,
@@ -134,7 +134,7 @@ function start() {
   $('#menu-btn').innerHTML = icon('menu');
   $('#search-icon').innerHTML = icon('search', 16);
   $('#new-btn').innerHTML = `${icon('plus', 17)}<span>New</span>`;
-  $('#ask-btn').innerHTML = `${icon('message-circle', 17)}<span>Ask TRACE</span>`;
+  $('#ask-btn').innerHTML = `${icon('circle-question-mark', 17)}<span>Quick answers</span>`;
   $('#keys-btn').innerHTML = `${icon('keyboard', 15)} Shortcuts`;
 
   $('#new-btn').onclick = () => openNewMenu();

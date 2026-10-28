@@ -95,7 +95,7 @@ function pageProject(params) {
         <button class="btn" id="edit">${icon('pencil', 15)} Edit</button>
         <button class="btn" id="archive">${icon(archived ? 'archive-restore' : 'archive', 15)} ${archived ? 'Restore' : 'Archive'}</button>
         <a class="btn" href="#/trail?project=${p.id}">${icon('waypoints', 15)} Evidence trail</a>
-        <button class="btn" id="ask-project">${icon('message-circle', 15)} Summarise</button>
+        <button class="btn" id="ask-project">${icon('circle-question-mark', 15)} Quick summary</button>
       </div>
     </section>
 

@@ -45,7 +45,20 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | **Jakob's law** (work like other apps) | Familiar patterns: a sidebar, `/` to search, Esc to close, toasts with Undo. |
 | **Aesthetic-usability effect** | Consistent tokens, a real logo and calm spacing make the tool feel trustworthy. |
 
-## Cognitive load review (latest round)
+## Making it feel designed, not generated (latest round)
+
+Some patterns read as "AI-generated" because so many AI products use them. We replaced each one with something specific to research:
+
+| Generic pattern | What TRACE does instead |
+| --- | --- |
+| "Good afternoon." greeting above a big prompt box with suggestion chips | An **editorial front page**: a serif headline made from real numbers ("6 design decisions, each traced back to what people actually did and said") |
+| A dark spotlight card with a rainbow bar | The latest decision as a **lead story**: headline, standfirst, and its evidence chain written out like a byline ("4 observations → 2 findings → …") |
+| Pastel tiles with numbered badges | The pipeline as **typography**: big serif numbers separated by thin rules, with a short colour stroke as the only decoration |
+| Dashboard charts dropped onto the home page | One **"In numbers" fact box** and a single sentiment bar; the full charts live on the pages they belong to |
+| A chatbot with bubbles, an avatar and a send arrow | **Quick answers**, a reference panel: a contents-style list of common questions, with each answer filed as a Q&A entry and its data source noted |
+| A busy multi-colour background | One **restrained ink palette** (indigo, violet, a warm rose-peach highlight) with big, slow folds |
+
+## Cognitive load review
 
 The aim was fewer things to read and decide on each screen, and more that can be understood at a glance.
 
