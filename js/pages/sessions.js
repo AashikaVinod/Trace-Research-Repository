@@ -73,6 +73,20 @@ left join research_session s on s.method_id = m.id group by m.name;`,
   draw();
 }
 
+// A thin bar showing how many observations were negative, neutral, positive.
+function sentimentMix(observations) {
+  if (observations.length === 0) return '';
+  const parts = [['negative', CHART_COLORS.negative], ['neutral', CHART_COLORS.neutral], ['positive', CHART_COLORS.positive]];
+  let bar = '';
+  let legend = '';
+  for (const [mood, color] of parts) {
+    const count = observations.filter((o) => o.sentiment === mood).length;
+    bar += `<i style="width:${(count / observations.length) * 100}%;background:${color}"></i>`;
+    legend += `<span><b>${count}</b> ${mood}</span>`;
+  }
+  return `<div style="margin-bottom:20px"><div class="mix" role="img" aria-label="Sentiment">${bar}</div><div class="mix-legend">${legend}</div></div>`;
+}
+
 function pageSession(params) {
   const s = byId('research_session', Number(params.id));
   if (!s) return notFound('Session', '#/sessions', 'sessions');
@@ -106,7 +120,7 @@ function pageSession(params) {
       </div>
     </section>
     <div class="grid-main row-gap">
-      <section class="card"><div class="card-top"><h3>Observations (${observations.length})</h3></div>${observationList}</section>
+      <section class="card"><div class="card-top"><h3>Observations (${observations.length})</h3></div>${sentimentMix(observations)}${observationList}</section>
       <div class="stack">
         <section class="card"><div class="card-top"><h3>Participants</h3></div>
           <div class="pills">${people.map((p) => `<a href="#/sessions?participant=${p.id}">${pill(p.participant_code, 'purple')}</a>`).join('') || '<span class="quiet">None added.</span>'}</div>

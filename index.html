@@ -15,8 +15,9 @@
 
   <!-- The animated colour marble behind the app (decoration only) -->
   <div class="backdrop" aria-hidden="true">
-    <span class="blob blob-1"></span><span class="blob blob-2"></span><span class="blob blob-3"></span>
-    <span class="blob blob-4"></span><span class="blob blob-5"></span><span class="marble"></span>
+    <span class="gas gas-1"></span><span class="gas gas-2"></span><span class="gas gas-3"></span>
+    <span class="gas gas-4"></span><span class="gas gas-5"></span><span class="gas gas-6"></span>
+    <span class="marble"></span>
   </div>
 
   <div class="app">
@@ -32,12 +33,15 @@
         <a href="#/trail" data-nav="/trail">Evidence trail</a>
         <a href="#/sessions" data-nav="/sessions">Sessions</a>
         <a href="#/people" data-nav="/people">People</a>
+        <span class="nav-sep" role="separator"></span>
         <a href="#/database" data-nav="/database">Database</a>
       </nav>
       <div class="sidebar-foot">
         <div class="mode-card" id="mode-card"></div>
-        <button class="motion-btn" id="motion-btn" type="button"></button>
-        <button class="motion-btn" id="keys-btn" type="button"></button>
+        <div class="tools">
+          <button class="motion-btn" id="motion-btn" type="button"></button>
+          <button class="motion-btn" id="keys-btn" type="button"></button>
+        </div>
       </div>
     </aside>
     <div class="scrim" id="scrim" hidden></div>

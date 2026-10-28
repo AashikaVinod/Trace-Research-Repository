@@ -91,7 +91,7 @@ css/style.css               all styles, in numbered sections
 sql/                        01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 06 views, 99 uninstall
 api/ask.js                  optional Vercel function for real AI answers
 assets/                     logo, favicon, fonts, marble texture
-tools/                      generate_seed.py (sample data), generate_marble.py (background)
+tools/                      generate_seed.py (sample data), generate_marble.py and generate_gas.py (background)
 tests/                      SQL tests and browser tests (not deployed)
 ```
 
@@ -208,7 +208,7 @@ The browser test also runs against your live site: set `BASE`, `TRACE_E2E_EMAIL`
 | Signed in but still view-only | Your user isn't in `trace_editor`. Run the insert in step 3. |
 | "Couldn't reach Supabase" | Network problem, or the free project is paused. Restore it in the dashboard. |
 | Stuck on "Loading TRACE…" | Open the browser console (F12) and look for a red error. Usually it's a typo in `js/config.js`. |
-| The moving background is distracting | Click **Pause background** in the sidebar. It also stops automatically if your system has "reduce motion" switched on. |
+| The moving background is distracting or slow | Click **Pause motion** at the bottom of the sidebar (the choice is remembered). It also stops automatically if your system has "reduce motion" switched on, and it is skipped on phones. |
 
 ## Known limitations
 

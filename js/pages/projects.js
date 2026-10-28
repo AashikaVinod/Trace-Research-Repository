@@ -82,12 +82,6 @@ function pageProject(params) {
   const team = data.project_researcher.filter((l) => l.project_id === p.id).map((l) => ({ ...byId('researcher', l.researcher_id), role: l.project_role }));
   const methods = data.project_method.filter((l) => l.project_id === p.id).map((l) => byId('research_method', l.method_id));
   const sentiment = sentimentCounts(p.id);
-  // How many sessions covered each research question (a junction-table count).
-  const coverage = questions.map((q, index) => ({
-    label: `Q${index + 1}. ${shorten(q.question_text, 46)}`,
-    value: data.session_question.filter((l) => l.question_id === q.id).length,
-    stage: 'finding',
-  }));
 
   view.innerHTML = `
     ${archived ? `<div class="notice" role="status">${icon('archive', 16)} This project was archived on ${formatDate(p.archived_at)}. Restore it to add new work.</div>` : ''}
@@ -105,7 +99,7 @@ function pageProject(params) {
       </div>
     </section>
 
-    <div class="grid-3 row-gap">
+    <div class="grid-2 row-gap">
       <section class="card"><div class="card-top"><h3>Evidence funnel</h3></div>${funnelChart(counts, `&project=${p.id}`)}</section>
       <section class="card"><div class="card-top"><h3>How sessions felt</h3></div>
         ${donutChart([
@@ -113,9 +107,6 @@ function pageProject(params) {
           { label: 'Neutral', value: sentiment.neutral, color: CHART_COLORS.neutral },
           { label: 'Positive', value: sentiment.positive, color: CHART_COLORS.positive },
         ], 'observations')}</section>
-      <section class="card"><div class="card-top"><h3>Question coverage</h3></div>
-        <p class="card-note">Sessions that covered each research question.</p>
-        ${coverage.length ? barChart(coverage) : '<p class="quiet">No questions yet.</p>'}</section>
     </div>
 
     <div class="grid-main row-gap">
@@ -126,7 +117,8 @@ function pageProject(params) {
       <div class="stack">
         <section class="card">
           <div class="card-top"><h3>Research questions</h3>${archived ? '' : `<button class="btn btn-small" id="add-question">${icon('plus', 15)} Question</button>`}</div>
-          ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}</span>
+          ${questions.length ? `<ol class="questions">${questions.map((q) => `<li><span>${esc(q.question_text)}
+            <small class="quiet" style="display:block;font-family:var(--font);font-size:12.5px">${coverageText(q)}</small></span>
             <button class="icon-btn" data-question="${q.id}" aria-label="Edit question">${icon('pencil', 15)}</button></li>`).join('')}</ol>`
             : '<p class="quiet">No questions yet.</p>'}
         </section>
@@ -159,6 +151,12 @@ update research_project set archived_at = now() where id = ${p.id};`)}`;
   $$('[data-question]').forEach((button) => {
     button.onclick = () => editQuestion(p.id, byId('research_question', Number(button.dataset.question)));
   });
+}
+
+// "Covered in 3 sessions": a count from the session_question junction table.
+function coverageText(question) {
+  const count = data.session_question.filter((l) => l.question_id === question.id).length;
+  return count ? `Covered in ${plural(count, 'session')}` : 'Not covered by a session yet';
 }
 
 // One row in a list of sessions.

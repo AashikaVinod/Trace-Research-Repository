@@ -24,8 +24,8 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | 1.1.1 Non-text content | Charts have text equivalents (`role="img"` with an `aria-label` listing the values, plus visible legends and numbers). Decorative images use empty `alt`. |
 | 1.3.1 Info and relationships | Real headings, lists, tables with `scope`, fieldsets for checkbox groups, labelled form fields. **Fixed:** labels read "Description optional" instead of "Descriptionoptional". |
 | 1.4.1 Use of colour | The stages always show a number and a name, not just a colour. Status pills include text. |
-| 1.4.3 Contrast (minimum) | **Fixed:** grey text and coloured text were darkened. All 17 text/background pairs in the palette now pass 4.5:1 (checked with a script; the lowest is 4.73:1). |
-| 1.4.10 Reflow | **Fixed:** no page scrolls sideways at 390 px wide. Wide tables scroll inside their card. Checked automatically on all 11 pages. |
+| 1.4.3 Contrast (minimum) | **Fixed:** grey text and coloured text were darkened. All 17 text/background pairs in the palette pass 4.5:1. On the moving glass, quiet text measured 5.19:1 at its worst moment (sampled from real screenshots). |
+| 1.4.10 Reflow | **Fixed:** no page scrolls sideways from 320 px to 1920 px wide. Wide tables scroll inside their card. Checked automatically on all 11 pages at 9 screen sizes. |
 | 2.1.1 Keyboard | Everything works with the keyboard. "Skip to content" is the first Tab stop. |
 | 2.2.2 Pause, stop, hide | **Added:** the moving background can be paused (and the choice is remembered). It stops automatically when the system asks for reduced motion. |
 | 2.4.3 Focus order | **Fixed:** focus now returns to the button that opened a dialog or panel. Opening the menu moves focus into it. |
@@ -44,6 +44,24 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | **Gestalt: similarity and proximity** | One colour per stage everywhere. Related controls are grouped in toolbars. |
 | **Jakob's law** (work like other apps) | Familiar patterns: a sidebar, `/` to search, Esc to close, toasts with Undo. |
 | **Aesthetic-usability effect** | Consistent tokens, a real logo and calm spacing make the tool feel trustworthy. |
+
+## Cognitive load review (latest round)
+
+The aim was fewer things to read and decide on each screen, and more that can be understood at a glance.
+
+| Problem | Change |
+| --- | --- |
+| The home page had 7 blocks competing for attention | Cut to 4 rows: greeting with latest decision, totals, the **evidence flow**, and three small charts. The featured-project and health cards were removed; their information now lives in the flow. |
+| The core idea (how evidence becomes decisions) needed reading | The **evidence flow** shows the 5 steps as connected boxes. Each arrow shows how much of a step is used by the next ("83% used"), so weak links stand out without reading anything. |
+| Long forms (the session form has 10 fields) | Forms are split into short **sections** with headings ("The session", "How and who", "Participants and questions"). This is chunking, which follows Miller's law. |
+| On record pages it wasn't obvious where the record sat in the chain | A **position strip** at the top shows the five steps, with the current one highlighted and linked neighbours tinted. |
+| The project page had 3 charts plus a separate coverage chart | Coverage moved into the question list ("Covered in 3 sessions"), leaving two charts. |
+| The sidebar footer was wordy and spilled out of the window on 1280×720 and 1366×768 screens | **Fixed:** the mode card is two short lines, the tools sit in one row, the sidebar scrolls if a screen is very short, and on short screens the help text hides. Checked at 9 screen sizes. |
+| Observations on a session page needed counting | A **sentiment bar** shows the negative / neutral / positive mix at a glance. |
+
+**Glass and motion vs. readability:** the window is slightly see-through, so the moving colour shows behind it. Quiet text was darkened, and its contrast was measured on real screenshots taken while the colour moved: the worst moment is 5.19:1, above the 4.5:1 AA minimum. The background stops for reduced-motion users, can be paused, and is skipped on phones, where the app fills the screen anyway.
+
+**Performance:** the moving clouds are pre-blurred images that are only moved, never blurred live, which is the cheapest way to animate them. The window uses no live blur. In the build environment, which has no graphics card, the page ran at about 9 frames per second with motion on and 54 when paused. Real devices with a GPU should be much smoother, but this wasn't measured. Dialogs no longer fade in, so they stay visible even if a slow device drops frames.
 
 ## What was checked, and how
 

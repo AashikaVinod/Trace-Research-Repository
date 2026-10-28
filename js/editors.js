@@ -22,12 +22,15 @@ async function editProject(project = null) {
     submitLabel: project ? 'Save changes' : 'Create project',
     values: project ? { ...project, team_ids: teamIds, method_ids: methodIds } : { status: 'active', start_date: today(), team_ids: [], method_ids: [] },
     fields: [
+      { type: 'section', label: 'About the project' },
       { name: 'title', label: 'Project title', required: true, min: 3 },
       { name: 'research_objective', label: 'Research objective', type: 'textarea', rows: 3, required: true, min: 10, help: 'What should this research help the team understand or decide?' },
       { name: 'description', label: 'Description', type: 'textarea', rows: 2 },
+      { type: 'section', label: 'Timing' },
       { name: 'status', label: 'Status', type: 'select', required: true, half: true, options: words(['planned', 'active', 'paused', 'completed']) },
       { name: 'start_date', label: 'Start date', type: 'date', required: true, half: true },
       { name: 'end_date', label: 'End date', type: 'date', half: true, check: (v, all) => (v && all.start_date && v < all.start_date ? 'Must be on or after the start date.' : '') },
+      { type: 'section', label: 'People and methods' },
       { name: 'team_ids', label: 'Team', type: 'checkboxes', options: options(data.researcher, (r) => r.full_name, (r) => r.role_title) },
       { name: 'method_ids', label: 'Methods', type: 'checkboxes', options: options(data.research_method, (m) => m.name) },
     ],
@@ -80,13 +83,16 @@ async function editSession(session = null, projectId = null) {
     submitLabel: session ? 'Save changes' : 'Create session',
     values,
     fields: [
+      { type: 'section', label: 'The session' },
       { name: 'project_id', label: 'Project', type: 'select', number: true, required: true, disabled: !!session, options: options(activeProjects()) },
       { name: 'title', label: 'Session title', required: true, min: 3 },
       { name: 'session_date', label: 'Date', type: 'date', required: true, half: true },
       { name: 'duration_minutes', label: 'Minutes', type: 'number', half: true, check: (v) => (v != null && (v < 1 || v > 600) ? 'Between 1 and 600.' : '') },
+      { type: 'section', label: 'How and who' },
       { name: 'method_id', label: 'Method', type: 'select', number: true, required: true, half: true, options: options(data.research_method, (m) => m.name) },
       { name: 'researcher_id', label: 'Facilitator', type: 'select', number: true, required: true, half: true, options: options(data.researcher, (r) => r.full_name) },
       { name: 'status', label: 'Status', type: 'select', required: true, options: words(['planned', 'completed', 'cancelled']) },
+      { type: 'section', label: 'Participants and questions' },
       { name: 'participant_ids', label: 'Participants', type: 'checkboxes', options: options(data.participant, (p) => p.participant_code, (p) => p.age_band) },
       { name: 'question_ids', label: 'Questions covered', type: 'checkboxes', dependsOn: ['project_id'], emptyText: 'Pick a project that has research questions.',
         options: (v) => options(data.research_question.filter((q) => q.project_id === v.project_id), (q) => q.question_text) },
@@ -153,6 +159,7 @@ async function editRecord(type, record = null, preset = {}) {
     fields.push({ name: 'decided_on', label: 'Decided on', type: 'date', half: true });
   }
   if (prev) {
+    fields.push({ type: 'section', label: `Evidence: link it to step ${prev.step}` });
     fields.push({ name: 'up_ids', label: RECORD_TEXT[type].up, type: 'checkboxes', dependsOn: ['project_id'],
       emptyText: `Choose a project that has ${prev.plural.toLowerCase()}.`,
       options: (v) => options(data[prev.type].filter((r) => r.project_id === v.project_id), (r) => r.title, (r) => shorten(r.description, 70)) });

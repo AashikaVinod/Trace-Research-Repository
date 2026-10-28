@@ -22,7 +22,8 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 | SQL integrity, security and view tests (`tests/run-sql-tests.sh`) | 33/33 passed |
 | Every user flow, sample mode (`tests/e2e.mjs`) | 26/26 passed |
 | Every user flow, Supabase replica, including sign-in (wrong password, then editor) | 27/27 passed. The test's project and decision rows were confirmed in PostgreSQL. |
-| Layout at 390 px and 820 px wide, all 11 pages | No sideways scrolling |
+| Layout at 9 screen sizes (320×640 up to 1920×1080), all 11 pages | No sideways scrolling, and the sidebar never spills out of the window |
+| Text contrast on the moving glass (sampled from screenshots over 15 seconds) | Worst 5.19:1 (AA needs 4.5) |
 | Colour contrast of all 17 palette text pairs | All pass WCAG AA |
 | Reduced motion, keyboard focus, skip link, assistant focus handling | Pass |
 

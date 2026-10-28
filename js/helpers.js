@@ -200,12 +200,15 @@ function confirmBox(title, text, okLabel = 'Confirm') {
 //   { name, label, type, options, required, min, pattern, patternMessage,
 //     half, help, disabled, number, dependsOn, check, emptyText }
 // type: text | email | date | number | textarea | select | checkboxes
+//       | section (a small heading that splits a long form into chunks)
 // options: a list, or a function (current values) => list, which lets a
 // field change when another field changes (see dependsOn).
 function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) {
   return new Promise((resolve) => {
     let saved = null;
     let startingValues = '';
+    const allFields = fields;
+    fields = fields.filter((field) => field.type !== 'section'); // headings are not inputs
 
     function getOptions(field, current) {
       return typeof field.options === 'function' ? field.options(current) : field.options || [];
@@ -243,6 +246,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
     }
 
     function fieldHtml(field) {
+      if (field.type === 'section') return `<p class="form-section">${esc(field.label)}</p>`;
       const optional = field.required ? '' : ' <span class="optional">optional</span>';
       return `<div class="field ${field.half ? 'half' : ''}" data-field="${field.name}">
         <label class="label" for="f-${field.name}">${esc(field.label)}${optional}</label>
@@ -261,7 +265,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
     const { dialog, close } = openModal({
       title,
       wide: fields.some((field) => field.type === 'checkboxes'),
-      body: `<form id="the-form" class="form" novalidate>${fields.map(fieldHtml).join('')}</form>`,
+      body: `<form id="the-form" class="form" novalidate>${allFields.map(fieldHtml).join('')}</form>`,
       footer: `<p class="form-alert" role="alert" hidden></p>
         <button class="btn" type="button" data-close>Cancel</button>
         <button class="btn btn-dark" type="submit" form="the-form">${esc(submitLabel)}</button>`,

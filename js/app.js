@@ -79,9 +79,9 @@ function render() {
 function renderShell() {
   if (MODE === 'sample') {
     $('#mode-card').innerHTML = `
-      <strong><span class="mode-dot sample"></span>Sample mode</strong>
-      <p>You're exploring a fictional study. Changes stay in this browser only and are not sent to a database.</p>
-      <button class="btn btn-small" id="reset-sample">${icon('rotate-ccw', 15)} Reset sample</button>`;
+      <div class="row"><strong><span class="mode-dot sample"></span>Sample mode</strong>
+        <button class="btn btn-small" id="reset-sample" title="Reset the sample data">${icon('rotate-ccw', 14)} Reset</button></div>
+      <p>A fictional study. Changes are saved in this browser only.</p>`;
     $('#reset-sample').onclick = async () => {
       const ok = await confirmBox('Reset the sample data?', 'Everything you added or changed in this browser will be replaced with the original sample study.', 'Reset');
       if (ok) { await resetSample(); toast('Sample data restored.'); render(); }
@@ -89,10 +89,10 @@ function renderShell() {
     $('#account').innerHTML = '';
     return;
   }
-  let status = 'Viewing only. Sign in to add or edit research.';
+  let status = 'View only. Sign in to edit.';
   if (auth.isEditor) status = `Editing as ${esc(auth.email)}.`;
   else if (auth.session) status = `Signed in as ${esc(auth.email)} (view only).`;
-  $('#mode-card').innerHTML = `<strong><span class="mode-dot live"></span>Connected to Supabase</strong><p>${status}</p>`;
+  $('#mode-card').innerHTML = `<strong><span class="mode-dot live"></span>Supabase</strong><p>${status}</p>`;
   $('#account').innerHTML = auth.session
     ? `${avatar(auth.email)}<button class="icon-btn" id="sign-out" aria-label="Sign out" title="Sign out">${icon('log-out')}</button>`
     : `<button class="btn" id="sign-in">${icon('log-in', 16)}<span>Sign in</span></button>`;
@@ -113,7 +113,8 @@ function closeMenu() {
 // Lets people pause the moving background (WCAG 2.2.2 Pause, Stop, Hide).
 function setMotion(paused) {
   document.body.classList.toggle('still', paused);
-  $('#motion-btn').innerHTML = paused ? `${icon('play', 15)} Play background` : `${icon('pause', 15)} Pause background`;
+  $('#motion-btn').innerHTML = paused ? `${icon('play', 15)} Play motion` : `${icon('pause', 15)} Pause motion`;
+  $('#motion-btn').setAttribute('aria-pressed', paused ? 'true' : 'false');
   try { localStorage.setItem('trace.motion', paused ? 'paused' : 'on'); } catch (error) { /* storage blocked */ }
 }
 
@@ -194,7 +195,7 @@ async function start() {
   $('#search-icon').innerHTML = icon('search', 16);
   $('#new-btn').innerHTML = `${icon('plus', 17)}<span>New</span>`;
   $('#ask-btn').innerHTML = `${icon('message-circle', 17)}<span>Ask TRACE</span>`;
-  $('#keys-btn').innerHTML = `${icon('keyboard', 15)} Keyboard shortcuts`;
+  $('#keys-btn').innerHTML = `${icon('keyboard', 15)} Shortcuts`;
 
   $('#new-btn').onclick = () => openNewMenu();
   $('#ask-btn').onclick = () => openAssistant();

@@ -41,7 +41,7 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 | Name | Hex | Use |
 | --- | --- | --- |
 | Ink 2 | `#4f535c` | Secondary text |
-| Ink 3 | `#6a6e77` | Quiet text (5.1:1 on white) |
+| Ink 3 | `#575b64` | Quiet text (6.8:1 on white, 5.2:1 at worst on the glass) |
 | Line | `#e7e5df` | Borders |
 | Danger | `#b4362a` | Errors |
 
@@ -51,9 +51,11 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 - **Newsreader**: research text (objectives, observations, quotes), so evidence reads like a document.
 - Scale: 44 / 32 / 22 / 17 / 15 / 13 px.
 
-## Background
+## Background and glass
 
-An animated colour marble: five soft colour fields drift under a white marble texture (`assets/marble.webp`, made by `tools/generate_marble.py`). It can be paused, and it stops automatically for reduced-motion users.
+- **Coloured gas under marble.** Six soft colour clouds (violet, blue, green, orange, pink, aqua) drift along the edges of the screen under a white marble texture. The cloud shape is one pre-blurred image (`assets/gas.webp`, from `tools/generate_gas.py`), tinted in CSS. The marble is `assets/marble.webp`, from `tools/generate_marble.py`.
+- **Glass.** The app window is `rgba(250, 249, 246, 0.74)`, slightly see-through, so the colour moves behind it. Cards are `rgba(255, 255, 255, 0.86)` with a faint border. There is no live blur, which keeps it fast.
+- **Motion rules.** It can be paused, stops for reduced-motion users, and is skipped on phones.
 
 ## Voice
 

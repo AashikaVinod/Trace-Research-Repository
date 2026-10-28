@@ -31,13 +31,6 @@ function pageHome() {
   const newestDecision = [...data.design_decision].sort((a, b) => (b.created_at > a.created_at ? 1 : -1))[0];
   const decisionTrail = newestDecision ? lineage('design_decision', newestDecision.id) : null;
 
-  // The featured project is the active project with the most evidence.
-  let featured = activeProjects()[0] || projects[0];
-  for (const p of activeProjects()) {
-    if (totalEvidence(p.id) > totalEvidence(featured.id)) featured = p;
-  }
-  const counts = projectCounts(featured.id);
-  const team = data.project_researcher.filter((l) => l.project_id === featured.id).map((l) => byId('researcher', l.researcher_id));
   const sentiment = sentimentCounts();
   const recentInsights = [...data.insight].sort((a, b) => (b.created_at > a.created_at ? 1 : -1)).slice(0, 4);
 
@@ -75,30 +68,10 @@ function pageHome() {
       ${statLink('#/library?type=insight', 'Insights', data.insight.length, `From ${plural(data.finding.length, 'finding')}`)}
     </section>
 
-    <div class="grid-main">
-      <article class="card featured">
-        <div class="card-top"><span class="label-sm">Featured project</span>${statusPill(featured.status)}</div>
-        <h2><a href="#/projects/${featured.id}">${esc(featured.title)}</a></h2>
-        <p class="lede">${esc(featured.research_objective)}</p>
-        <div class="chain">
-          ${STAGES.map((s) => `<a class="chain-step stage-${s.type}" href="#/library?project=${featured.id}&type=${s.type}"><strong>${counts[s.type]}</strong><span>${s.plural}</span></a>`).join('')}
-        </div>
-        <div class="card-foot">
-          <div class="avatars">${team.map((r) => avatar(r.full_name, 32)).join('')}</div>
-          ${meta(plural(team.length, 'researcher'), plural(counts.sessions, 'session'))}
-          <a class="btn btn-small" href="#/projects/${featured.id}">Open project ${icon('arrow-right', 15)}</a>
-        </div>
-      </article>
-      <article class="card">
-        <div class="card-top"><h3>Evidence health</h3></div>
-        <p class="card-note">How well each step is connected to the next.</p>
-        <div class="rings">
-          ${ringStat(completeTrailPercent(), 'var(--ins)', 'Decisions with full evidence', 'Traced back to an observation')}
-          ${ringStat(linkedPercent('observation'), 'var(--obs)', 'Observations in use', 'Support at least one finding')}
-          ${ringStat(linkedPercent('insight'), 'var(--rec)', 'Insights acted on', 'Lead to a recommendation')}
-        </div>
-      </article>
-    </div>
+    <section class="card" aria-labelledby="flow-title">
+      <div class="card-top"><h3 id="flow-title">How evidence becomes decisions</h3><a class="small" href="#/trail">Open the evidence trail</a></div>
+      ${evidenceFlow()}
+    </section>
 
     <div class="grid-3 row-gap">
       <article class="card">
@@ -143,9 +116,19 @@ from research_session group by 1 order by 1;`)}`;
   }
 }
 
-function totalEvidence(projectId) {
-  const counts = stageCounts(projectId);
-  return STAGES.reduce((sum, stage) => sum + counts[stage.type], 0);
+// The five steps as connected boxes. Each arrow shows how much of a step
+// is used by the next one, so weak links stand out at a glance.
+function evidenceFlow() {
+  const hints = { observation: 'What people did and said', finding: 'Patterns across sessions', insight: 'Why they matter', recommendation: 'What should change', design_decision: 'What the team chose' };
+  let html = '<div class="flow">';
+  for (const stage of STAGES) {
+    html += `<a class="flow-node stage-${stage.type}" href="#/library?type=${stage.type}">
+      <span class="step">${stage.step}</span><strong>${data[stage.type].length}</strong><span>${stage.plural}</span><small>${hints[stage.type]}</small></a>`;
+    if (stage.step < 5) {
+      html += `<span class="flow-link" title="Share of ${stage.plural.toLowerCase()} used by the next step"><span class="line"></span>${linkedPercent(stage.type)}% used</span>`;
+    }
+  }
+  return html + '</div>';
 }
 
 function statLink(href, label, value, note) {

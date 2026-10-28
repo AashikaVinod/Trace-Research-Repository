@@ -85,6 +85,20 @@ function docCard(r) {
   </a>`;
 }
 
+// A five-part strip showing which step this record is, and whether the
+// steps either side of it are linked.
+function chainPosition(type, upCount, downCount) {
+  const step = STAGE[type].step;
+  let html = `<div class="position" aria-label="Step ${step} of 5">`;
+  for (const stage of STAGES) {
+    let state = '';
+    if (stage.step === step) state = 'here';
+    else if ((stage.step === step - 1 && upCount) || (stage.step === step + 1 && downCount)) state = 'linked';
+    html += `<span class="stage-${stage.type} ${state}">${stage.step}. ${stage.label}</span>`;
+  }
+  return html + '</div>';
+}
+
 // The details shown beside a record, per type.
 function recordFacts(type, r) {
   if (type === 'observation') return [['Sentiment', statusPill(r.sentiment)], ['Session', `<a href="#/sessions/${r.session_id}">${esc(byId('research_session', r.session_id).title)}</a>`]];
@@ -116,6 +130,7 @@ function pageRecord(params) {
   view.innerHTML = `
     <div class="record-layout">
       <article class="paper stage-${type}">
+        ${chainPosition(type, builtOn.length, leadsTo.length)}
         <span class="doc-type"><b>${stage.step}</b>${stage.label}</span>
         <h1>${esc(r.title)}</h1>
         <p class="paper-text">${esc(r.description)}</p>
