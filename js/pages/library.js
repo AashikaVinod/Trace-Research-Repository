@@ -4,11 +4,10 @@
 // ===================================================================
 
 function pageLibrary(params, query) {
-  setCrumbs(['Research library']);
+  setCrumbs(['Evidence']);
   let type = STAGE[query.type] ? query.type : '';
   let projectId = query.project ? Number(query.project) : '';
   let search = query.q || '';
-  let layout = query.view === 'list' ? 'list' : 'grid';
   $('#search-input').value = search;
 
   let tabs = `<button class="folder-tab" role="tab" data-type="">All evidence <small>${allRecords().length}</small></button>`;
@@ -32,25 +31,13 @@ function pageLibrary(params, query) {
           ${data.research_project.map((p) => `<option value="${p.id}">${esc(p.title)}${p.archived_at ? ' (archived)' : ''}</option>`).join('')}
         </select>
         <span class="count" id="count" aria-live="polite"></span>
-        <div class="chips" role="group" aria-label="Layout">
-          <button class="chip" data-layout="grid" aria-label="Grid view" title="Grid view">${icon('layout-grid', 16)}</button>
-          <button class="chip" data-layout="list" aria-label="List view" title="List view">${icon('list', 16)}</button>
-        </div>
       </div>
       <div id="results"></div>
-    </div>
-    ${dbPanel(['UNION ALL', 'View', 'WHERE + ILIKE (search)', 'Index'], `
--- All five record tables combined into one list (view in sql/06_views.sql)
-select record_type, id, title from v_evidence_record
-where (title ilike '%slot%' or description ilike '%slot%')
-  and record_type = 'insight'      -- the tab you pick
-  and project_id = 2;              -- the project you pick`,
-    'Indexes on project_id (sql/02) keep filtering by project fast as the tables grow.')}`;
+    </div>`;
   $('#project').value = String(projectId);
 
   function draw() {
-    setQuery({ type, project: projectId, q: search, view: layout === 'list' ? 'list' : '' });
-    $$('[data-layout]').forEach((button) => button.setAttribute('aria-pressed', button.dataset.layout === layout));
+    setQuery({ type, project: projectId, q: search });
     $$('[data-type]').forEach((tab) => tab.setAttribute('aria-selected', tab.dataset.type === type));
     const words = search.toLowerCase().split(' ').filter((word) => word);
     const list = allRecords()
@@ -59,19 +46,13 @@ where (title ilike '%slot%' or description ilike '%slot%')
       .filter((r) => words.every((word) => `${r.title} ${r.description}`.toLowerCase().includes(word)))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
     $('#count').textContent = plural(list.length, 'record');
-    let html = `<div class="doc-grid">${list.map(docCard).join('')}</div>`;
-    if (layout === 'list') {
-      html = `<table class="table"><thead><tr><th scope="col">Step</th><th scope="col">Title</th><th scope="col" class="hide-sm">Project</th><th scope="col" class="hide-sm">Links</th><th scope="col" class="hide-sm">Added</th></tr></thead>
-        <tbody>${list.map(recordRow).join('')}</tbody></table>`;
-    }
     $('#results').innerHTML = list.length
-      ? html
+      ? `<div class="doc-grid">${list.map(docCard).join('')}</div>`
       : `<div class="empty"><h2>Nothing matches</h2><p>Try another tab, project or search.</p></div>`;
   }
 
   $('#add').onclick = () => (type ? editRecord(type, null, { projectId }) : openNewMenu());
   $$('[data-type]').forEach((tab) => { tab.onclick = () => { type = tab.dataset.type; draw(); }; });
-  $$('[data-layout]').forEach((button) => { button.onclick = () => { layout = button.dataset.layout; draw(); }; });
   $('#project').onchange = (event) => { projectId = event.target.value ? Number(event.target.value) : ''; draw(); };
   $('#filter').oninput = (event) => { search = event.target.value; draw(); };
   draw();
@@ -97,19 +78,6 @@ function docCard(r) {
   </a>`;
 }
 
-// A five-part strip showing which step this record is, and whether the
-// steps either side of it are linked.
-function chainPosition(type, upCount, downCount) {
-  const step = STAGE[type].step;
-  let html = `<div class="position" aria-label="Step ${step} of 5">`;
-  for (const stage of STAGES) {
-    let state = '';
-    if (stage.step === step) state = 'here';
-    else if ((stage.step === step - 1 && upCount) || (stage.step === step + 1 && downCount)) state = 'linked';
-    html += `<span class="stage-${stage.type} ${state}">${stage.step}. ${stage.label}</span>`;
-  }
-  return html + '</div>';
-}
 
 // "The story so far": the whole chain this record belongs to, written as
 // plain lists, the way a researcher would document it.
@@ -142,20 +110,6 @@ function storyBlock(type, record) {
   </section>`;
 }
 
-// A record as a table row (the list view, like the Repository reference).
-function recordRow(r) {
-  const stage = STAGE[r.type];
-  const project = byId('research_project', r.project_id);
-  const sources = upstream(r.type, r.id).length;
-  const uses = downstream(r.type, r.id).length;
-  return `<tr>
-    <td><span class="doc-type stage-${r.type}"><b>${stage.step}</b>${stage.label}</span></td>
-    <td>${recordCode(r.type, r.id)} <a class="strong-link" href="#/record/${r.type}/${r.id}">${esc(r.title)}</a></td>
-    <td class="hide-sm">${esc(project ? project.title : '')}</td>
-    <td class="hide-sm">${r.type === 'observation' ? '' : `${sources} in`}${r.type !== 'observation' && r.type !== 'design_decision' ? ', ' : ''}${r.type === 'design_decision' ? '' : `${uses} out`}</td>
-    <td class="hide-sm nowrap">${formatDate(r.created_at)}</td>
-  </tr>`;
-}
 
 // The details shown beside a record, per type.
 function recordFacts(type, r) {
@@ -175,26 +129,18 @@ function pageRecord(params) {
   const prev = previousStage(type);
   const next = nextStage(type);
   const project = byId('research_project', r.project_id);
-  const builtOn = upstream(type, r.id);
-  const leadsTo = downstream(type, r.id);
-  setCrumbs(['Research library', '#/library'], [stage.plural, `#/library?type=${type}`], [r.title]);
-
-  function linkList(items) {
-    return `<div class="link-list">${items.map((x) => `
-      <a class="link-item stage-${x.type}" href="#/record/${x.type}/${x.id}"><span class="dot"></span>
-        <span><strong>${esc(x.title)}</strong><small>${esc(shorten(x.description, 110))}</small></span></a>`).join('')}</div>`;
-  }
+  setCrumbs(['Evidence', '#/library'], [stage.plural, `#/library?type=${type}`], [r.title]);
 
   view.innerHTML = `
     <div class="record-layout">
       <article class="paper stage-${type}">
-        ${chainPosition(type, builtOn.length, leadsTo.length)}
         <span class="doc-type"><b>${stage.step}</b>${stage.label}</span> ${recordCode(type, r.id)}
         <h1>${esc(r.title)}</h1>
         <p class="paper-text">${esc(r.description)}</p>
         <div class="actions">
+          <a class="btn btn-dark" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} Trace it</a>
           <button class="btn" id="edit">${icon('pencil', 15)} Edit${prev ? ' and link' : ''}</button>
-          <a class="btn" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} See its evidence trail</a>
+          ${next && !project.archived_at ? `<button class="btn" id="add-next">${icon('plus', 15)} Add a ${next.label.toLowerCase()}</button>` : ''}
         </div>
       </article>
       <aside class="card facts">
@@ -205,28 +151,8 @@ function pageRecord(params) {
         </dl>
       </aside>
     </div>
-    <div class="grid-2 row-gap">
-      ${prev ? `<section class="card"><div class="card-top"><h3>Built on (${builtOn.length})</h3></div>
-        ${builtOn.length ? linkList(builtOn) : `<p class="quiet">No ${prev.plural.toLowerCase()} support this yet. Use “Edit and link” to connect some.</p>`}</section>` : ''}
-      ${next ? `<section class="card"><div class="card-top"><h3>Leads to (${leadsTo.length})</h3>
-        ${project.archived_at ? '' : `<button class="btn btn-small" id="add-next">${icon('plus', 15)} ${next.label}</button>`}</div>
-        ${leadsTo.length ? linkList(leadsTo) : `<p class="quiet">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
-    </div>
     ${storyBlock(type, r)}
-    <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>
-    ${dbPanel(['M:N junction table', 'JOIN', 'Trigger (same-project check)', 'CHECK constraint'], prev ? `
--- What this ${stage.label.toLowerCase()} is built on: a JOIN through the junction table
-select p.id, p.title
-from ${stage.link.table} l
-join ${prev.type} p on p.id = l.${stage.link.up}
-where l.${stage.link.self} = ${r.id};
-
--- Linking: one row per pair. A trigger rejects links across projects.
-insert into ${stage.link.table} (${stage.link.up}, ${stage.link.self}) values (…, ${r.id});` : `
--- An observation belongs to one session (foreign key)
-select * from observation where id = ${r.id};
--- Its project is found through the session, not stored twice (3NF)
-select s.project_id from observation o join research_session s on s.id = o.session_id where o.id = ${r.id};`)}`;
+    <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>`;
 
   hookAttachments(view);
   $('#edit').onclick = () => editRecord(type, r);

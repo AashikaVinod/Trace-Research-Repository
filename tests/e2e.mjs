@@ -40,21 +40,17 @@ const project = `Demo project ${RUN}`;
 await step('opens with the sample study, the logo and totals', async () => {
   await open('/');
   check(await page.locator('.brand img').isVisible(), 'logo');
-  check(Number(await page.locator('.stat-card strong').first().textContent()) >= 4, 'project total');
-  check(await page.locator('.pill-columns').count() === 1 && await page.locator('.gauge').count() === 1 && await page.locator('.ranks li').count() === 4, 'dashboard components drawn');
+  check(Number(await page.locator('.stat strong').first().textContent()) >= 4, 'project total');
+  check(await page.locator('main .card').count() === 2 && await page.locator('main .rows li').count() === 4, 'home shows totals, the trace list and up next');
+  check(await page.locator('.nav a').count() === 6, 'six pages in the sidebar');
 });
 
 
 // ---------- Shortcuts, help and motion ----------
-await step('keyboard shortcuts: / focuses search, ? shows help', async () => {
+await step('keyboard: / focuses search', async () => {
   await page.locator('main h1').click();
   await page.keyboard.press('/');
   check(await page.evaluate(() => document.activeElement.id) === 'search-input', 'search focused');
-  await page.locator('main h1').click();
-  await page.keyboard.press('?');
-  await modal().getByText('Keyboard shortcuts').waitFor();
-  await page.keyboard.press('Escape');
-  check(await page.locator('dialog[open]').count() === 0, 'closed with Escape');
 });
 
 await step('background motion can be paused and stays paused', async () => {
@@ -162,7 +158,7 @@ for (const [label, body] of [['Finding', 'Describe the pattern'], ['Insight', 'W
     await fill(body, `Automated ${label.toLowerCase()}.`);
     await save();
     await page.waitForSelector(`h1:has-text("${label} ${RUN}")`);
-    await page.waitForSelector(`.link-item:has-text("${before}")`);
+    await page.locator('#story a', { hasText: before }).first().waitFor();   // the story lists what it rests on
   });
 }
 
@@ -211,16 +207,13 @@ await step('unlink evidence by editing the finding', async () => {
   await page.locator('#edit').click();
   await modal().locator('.check', { hasText: `Observation ${RUN}` }).locator('input').uncheck();
   await save();
-  await page.waitForSelector('text=No observations support this yet');
+  await page.locator('#story .stage-observation', { hasText: 'Nothing yet.' }).waitFor();
 });
 
 // ---------- Library, people, sessions ----------
-await step('library: search, tabs, project filter and list view', async () => {
+await step('evidence: search, tabs and project filter', async () => {
   await open(`/library?q=${RUN}`);
   check(await page.locator('.doc').count() === 5, `found ${await page.locator('.doc').count()}`);
-  await page.locator('[data-layout="list"]').click();
-  check(await page.locator('#results tbody tr').count() === 5, 'list view shows the same 5');
-  await page.locator('[data-layout="grid"]').click();
   await page.locator('.folder-tab', { hasText: 'Insights' }).click();
   check(await page.locator('.doc').count() === 1, 'one insight');
   await page.locator('.folder-tab', { hasText: 'All evidence' }).click();
@@ -228,8 +221,8 @@ await step('library: search, tabs, project filter and list view', async () => {
   check(await page.locator('.doc').count() === 0, 'other project has none of these');
 });
 
-await step('participants: code is validated, then create and edit', async () => {
-  await open('/people');
+await step('participants (on the Sessions page): code is validated, then create and edit', async () => {
+  await open('/sessions');
   await page.locator('#add-participant').click();
   await fill('Participant code', 'Alice');
   await save();
@@ -245,41 +238,12 @@ await step('participants: code is validated, then create and edit', async () => 
   await page.locator('tr', { hasText: code }).locator('text=25-34').waitFor();
 });
 
-await step('team, methods and segments: add and edit', async () => {
-  await page.locator('[data-add="researcher"]').click();
-  await fill('Full name', `Meera Joshi ${RUN}`);
-  await fill('Email', `meera.${RUN}@example.org`);
-  await save();
-  await page.getByText(`Meera Joshi ${RUN}`).waitFor();
-  await page.locator('[data-add="research_method"]').click();
-  await fill('Name', `Tree test ${RUN}`);
-  await save();
-  await page.locator('[data-add="segment"]').click();
-  await fill('Name', `Night-shift workers ${RUN}`);
-  await save();
-  await page.locator(`[aria-label="Edit Meera Joshi ${RUN}"]`).click();
-  await fill('Role', 'Research intern');
-  await save();
-  await page.getByText('Research intern').waitFor();
-});
-
 await step('sessions: filter by participant', async () => {
   await open('/sessions');
   const all = await page.locator('#rows tr').count();
   await page.locator('#participant').selectOption({ label: 'P-01' });
   const filtered = await page.locator('#rows tr').count();
   check(filtered > 0 && filtered < all, `${filtered} of ${all}`);
-});
-
-await step('sources library: folders and kinds filter the photos', async () => {
-  await open('/sources');
-  const all = await page.locator('.polaroid').count();
-  await page.locator('[data-kind="whiteboard"]').click();
-  const whiteboards = await page.locator('.polaroid').count();
-  check(whiteboards > 0 && whiteboards < all, `${whiteboards} of ${all}`);
-  await page.locator('[data-kind=""]').click();
-  await page.locator('.folder-card', { hasText: 'Library catalogue search' }).click();
-  check(await page.locator('.polaroid').count() === 2, 'library project has 2 sources');
 });
 
 // ---------- Safety nets ----------
@@ -315,16 +279,6 @@ await step('archive, undo, archive again, then restore', async () => {
 });
 
 // ---------- Assistant and database ----------
-await step('Quick answers: common and typed questions', async () => {
-  await page.locator('#ask-btn').click();
-  await page.locator('#ask [data-ask="What are the key insights?"]').click();
-  await page.locator('.answer', { hasText: 'most important' }).waitFor();
-  await page.locator('#ask-input').fill('Tell me about grocery checkout');
-  await page.locator('#ask-input').press('Enter');
-  await page.locator('.answer a', { hasText: 'Grocery checkout friction' }).first().waitFor();
-  await page.locator('#ask-close').click();
-});
-
 await step('Database page: every query in the lab returns rows', async () => {
   await open('/database');
   const buttons = await page.locator('[data-run]').count();

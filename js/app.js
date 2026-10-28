@@ -16,9 +16,7 @@ const ROUTES = [
   ['/trail/:type/:id', pageTrail],
   ['/sessions', pageSessions],
   ['/sessions/:id', pageSession],
-  ['/people', pagePeople],
   ['/database', pageDatabase],
-  ['/sources', pageSources],
 ];
 
 // Reads "#/projects/2?show=all" into { page, path, params, query }.
@@ -102,27 +100,12 @@ function setMotion(paused) {
   try { localStorage.setItem('trace.motion', paused ? 'paused' : 'on'); } catch (error) { /* storage blocked */ }
 }
 
-function showShortcuts() {
-  openModal({
-    title: 'Keyboard shortcuts',
-    body: `<ul class="shortcuts">
-      <li>Search research <kbd>/</kbd></li>
-      <li>Add something new <kbd>N</kbd></li>
-      <li>Quick answers <kbd>A</kbd></li>
-      <li>Show these shortcuts <kbd>?</kbd></li>
-      <li>Close a dialog or panel <kbd>Esc</kbd></li>
-    </ul>`,
-  });
-}
 
 // Single-key shortcuts (only when you're not typing in a field).
 function handleShortcut(event) {
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
   if (typing || event.metaKey || event.ctrlKey || event.altKey || document.querySelector('dialog[open]')) return;
   if (event.key === '/') { event.preventDefault(); $('#search-input').focus(); }
-  else if (event.key === 'n') openNewMenu();
-  else if (event.key === 'a') openAssistant();
-  else if (event.key === '?') showShortcuts();
   else if (event.key === 'Escape') closeMenu();
 }
 
@@ -131,17 +114,13 @@ function handleShortcut(event) {
 // -------------------------------------------------------------------
 
 function start() {
-  const navIcons = { '/': 'house', '/projects': 'folder-kanban', '/library': 'files', '/trail': 'waypoints', '/sessions': 'calendar-days', '/people': 'users', '/database': 'database', '/sources': 'images' };
+  const navIcons = { '/': 'house', '/projects': 'folder-kanban', '/sessions': 'calendar-days', '/library': 'files', '/trail': 'waypoints', '/database': 'database' };
   for (const link of $$('[data-nav]')) link.insertAdjacentHTML('afterbegin', icon(navIcons[link.dataset.nav]));
   $('#menu-btn').innerHTML = icon('menu');
   $('#search-icon').innerHTML = icon('search', 16);
   $('#new-btn').innerHTML = `${icon('plus', 17)}<span>New</span>`;
-  $('#ask-btn').innerHTML = `${icon('circle-question-mark', 17)}<span>Quick answers</span>`;
-  $('#keys-btn').innerHTML = `${icon('keyboard', 15)} Shortcuts`;
 
   $('#new-btn').onclick = () => openNewMenu();
-  $('#ask-btn').onclick = () => openAssistant();
-  $('#keys-btn').onclick = () => showShortcuts();
   $('#menu-btn').onclick = () => (document.body.classList.contains('menu-open') ? closeMenu() : openMenu());
   $('#scrim').onclick = closeMenu;
   $('#search').onsubmit = (event) => {
@@ -155,7 +134,6 @@ function start() {
   document.addEventListener('keydown', handleShortcut);
 
   startDatabase();
-  buildAssistant();
   window.addEventListener('hashchange', () => { render(); view.focus({ preventScroll: true }); window.scrollTo(0, 0); });
   render();
 }

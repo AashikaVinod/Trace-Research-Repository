@@ -9,50 +9,18 @@ function pageTrail(params, query) {
   const inProject = (r) => !projectId || r.project_id === projectId;
   const focusType = params.type;
   const focus = focusType && STAGE[focusType] ? byId(focusType, Number(params.id)) : null;
-  setCrumbs(['Evidence trail', '#/trail'], ...(focus ? [[focus.title]] : []));
-
-  let options = '';
-  for (const stage of STAGES) {
-    options += `<optgroup label="${stage.plural}">`;
-    for (const r of data[stage.type].filter(inProject)) options += `<option value="${stage.type}/${r.id}">${esc(r.title)}</option>`;
-    options += '</optgroup>';
-  }
+  setCrumbs(['Trace', '#/trail'], ...(focus ? [[focus.title]] : []));
 
   const head = `
-    <header class="page-head"><div><h1>Evidence trail</h1>
-      <p>Follow any record back to what people actually did and said, and forward to the decisions it shaped.</p></div></header>
-    <div class="toolbar">
-      <label class="sr" for="trail-project">Project</label>
-      <select class="input" id="trail-project"><option value="">All projects</option>
-        ${data.research_project.map((p) => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}</select>
-      <label class="sr" for="trail-pick">Record to trace</label>
-      <select class="input grow" id="trail-pick"><option value="">Choose a record to trace…</option>${options}</select>
-    </div>`;
-
-  const panel = dbPanel(['WITH RECURSIVE (CTE)', 'UNION ALL', 'View', 'Graph traversal'], `
--- 1. A view turns the four junction tables into one list of edges
-create view v_evidence_edge as
-  select 'observation' as from_type, observation_id as from_id, 'finding' as to_type, finding_id as to_id from observation_finding
-  union all select 'finding', finding_id, 'insight', insight_id from finding_insight
-  union all select 'insight', insight_id, 'recommendation', recommendation_id from insight_recommendation
-  union all select 'recommendation', recommendation_id, 'design_decision', decision_id from recommendation_decision;
-
--- 2. A recursive query walks the edges upstream, step by step
-with recursive up as (
-  select from_type, from_id, 1 as depth from v_evidence_edge where to_type = 'design_decision' and to_id = 1
-  union
-  select e.from_type, e.from_id, up.depth + 1 from v_evidence_edge e join up on e.to_type = up.from_type and e.to_id = up.from_id
-)
-select * from up;
-
--- Try it live: select * from trace_lineage('design_decision', 1);`);
+    <header class="page-head"><div><h1>Trace</h1>
+      <p>Follow a decision back to what people actually did and said, and the photos and notes behind it.</p></div></header>`;
 
   if (!focus) {
     // Start: one simple question, answered by a list of decisions.
     const decisions = decisionStrength().filter((d) => inProject(byId('design_decision', d.id)));
     view.innerHTML = `${head}
       <section class="card">
-        <div class="card-top"><div><h3>What do you want to trace?</h3><p class="card-sub">Pick a decision to follow it back to the sessions, notes and photos it came from.</p></div></div>
+        <div class="card-top"><div><h3>What do you want to trace?</h3><p class="card-sub">Pick a decision${projectId ? ` in ${esc(byId('research_project', projectId).title)}` : ''}. To trace anything else, use the “Trace it” button on its page.</p></div></div>
         <ul class="rows">${decisions.map((d) => {
           const sources = trailSources(lineage('design_decision', d.id)).length;
           return `<li><a href="#/trail/design_decision/${d.id}${projectId ? `?project=${projectId}` : ''}" class="stage-design_decision">
@@ -60,10 +28,7 @@ select * from up;
             <span class="row-text"><strong>${esc(d.title)}</strong>${meta(esc(byId('research_project', d.project_id).title), plural(d.observations, 'observation'), plural(sources, 'source'))}</span>
             <span class="chev">${icon('chevron-right', 18)}</span></a></li>`;
         }).join('') || '<li class="quiet">No decisions in this project yet.</li>'}</ul>
-        <p class="card-note" style="margin-top:12px">Or trace any other record with the picker above.</p>
-      </section>
-      ${panel}`;
-    hookPickers();
+      </section>`;
     return;
   }
 
@@ -110,22 +75,12 @@ select * from up;
         <a class="btn" href="#/record/${focusType}/${focus.id}">${icon('eye', 15)} Open record</a>
         <button class="btn" id="edit-focus">${icon('pencil', 15)} Edit and link</button>
       </div>
-    </section>
-    ${panel}`;
+    </section>`;
 
-  $('#trail-pick').value = `${focusType}/${focus.id}`;
   $('#edit-focus').onclick = () => editRecord(focusType, focus);
-  hookPickers();
   drawLines(edges, focusKey);
   new ResizeObserver(() => drawLines(edges, focusKey)).observe($('#trail'));
 
-  function hookPickers() {
-    $('#trail-project').value = String(projectId);
-    $('#trail-project').onchange = (event) => go('/trail' + (event.target.value ? `?project=${event.target.value}` : ''));
-    $('#trail-pick').onchange = (event) => {
-      if (event.target.value) go(`/trail/${event.target.value}${projectId ? `?project=${projectId}` : ''}`);
-    };
-  }
 }
 
 // Every source attached to a record in the trail, or to a session its

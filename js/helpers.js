@@ -30,10 +30,6 @@ function icon(name, size = 18) {
     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes}</svg>`;
 }
 
-// The TRACE logo mark (assets/logo-mark.svg).
-function logo(size = 28) {
-  return `<img src="assets/logo-mark.svg" width="${size}" height="${size}" alt="">`;
-}
 
 // ----- Text and dates ------------------------------------------------
 
@@ -111,33 +107,7 @@ function meta(...parts) {
   return `<span class="meta">${items.map((part) => `<span>${part}</span>`).join('')}</span>`;
 }
 
-// "How the database does this" panel shown at the bottom of pages.
-// concepts: list of DBMS concept names. sql: the matching SQL.
-function dbPanel(concepts, sql, note = '') {
-  return `<details class="db-panel">
-    <summary>${icon('database')} How the database does this ${icon('chevron-down')}</summary>
-    <div class="db-body">
-      <div class="concepts">${concepts.map((c) => `<span class="concept">${esc(c)}</span>`).join('')}</div>
-      ${note ? `<p class="muted small">${note}</p>` : ''}
-      <pre class="sql">${highlightSql(sql)}</pre>
-    </div>
-  </details>`;
-}
 
-// Colours SQL keywords so queries are easier to read.
-const SQL_WORDS = ['select', 'from', 'where', 'join', 'left join', 'on', 'group by', 'order by', 'count', 'distinct',
-  'union all', 'with recursive', 'as', 'and', 'or', 'not exists', 'insert into', 'values', 'update', 'set', 'delete',
-  'create view', 'create policy', 'create trigger', 'references', 'primary key', 'foreign key', 'unique', 'check',
-  'returning', 'limit', 'filter', 'is null', 'ilike', 'in', 'desc', 'begin', 'commit'];
-function highlightSql(sql) {
-  let html = esc(sql.trim());
-  html = html.replace(/(--[^\n]*)/g, '<span class="cm">$1</span>');
-  html = html.replace(/(&#39;[^&]*?&#39;)/g, '<span class="str">$1</span>');
-  for (const word of SQL_WORDS) {
-    html = html.replace(new RegExp(`\\b(${word})\\b`, 'gi'), '<span class="kw">$1</span>');
-  }
-  return html;
-}
 
 // ----- Toast messages ------------------------------------------------
 // toast('Saved.') or toast('Archived.', 'success', { label: 'Undo', run: fn })

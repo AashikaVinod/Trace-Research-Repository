@@ -2,31 +2,30 @@
 // Sessions: the list of research sessions and a page for each one.
 // ===================================================================
 
+// One participant as a table row.
+function participantRow(p) {
+  const segments = data.participant_segment.filter((l) => l.participant_id === p.id).map((l) => byId('segment', l.segment_id));
+  const sessions = data.session_participant.filter((l) => l.participant_id === p.id).length;
+  return `<tr>
+    <td><strong>${esc(p.participant_code)}</strong></td>
+    <td>${esc(p.age_band || '—')}</td>
+    <td class="hide-sm">${esc(segments.map((g) => g.name).join(', ') || '—')}</td>
+    <td>${sessions ? `<a class="strong-link" href="#/sessions?participant=${p.id}">${sessions}</a>` : '0'}</td>
+    <td class="right"><button class="icon-btn" data-participant="${p.id}" aria-label="Edit ${esc(p.participant_code)}">${icon('pencil', 15)}</button></td>
+  </tr>`;
+}
+
 function pageSessions(params, query) {
   setCrumbs(['Sessions']);
   let projectId = query.project ? Number(query.project) : '';
   let participantId = query.participant ? Number(query.participant) : '';
-
-  const methodCounts = data.research_method.map((m, index) => ({
-    label: m.name,
-    value: data.research_session.filter((s) => s.method_id === m.id).length,
-    color: CHART_COLORS.series[index % CHART_COLORS.series.length],
-  })).filter((m) => m.value > 0);
 
   view.innerHTML = `
     <header class="page-head">
       <div><h1>Sessions</h1><p>Interviews, tests and studies. Observations are recorded against the session they came from.</p></div>
       <button class="btn btn-dark" id="add">${icon('plus', 16)} New session</button>
     </header>
-    <div class="dash dash-3">
-      <section class="card"><div class="card-top"><div><h3>Sessions per month</h3><p class="card-sub">Latest month highlighted</p></div></div>
-        ${pillColumns(countsByMonth(data.research_session, 'session_date').map((m) => ({ label: m.label, value: m.count, highlight: m.isCurrent })))}</section>
-      <section class="card"><div class="card-top"><h3>Methods used</h3></div>${donutChart(methodCounts, 'sessions')}</section>
-      <section class="card"><div class="card-top"><h3>Research rhythm</h3></div>${activityDots(sessionsByWeek(16))}
-        <p class="card-sub" style="margin-top:12px">Each dot is a week. Darker means more sessions.</p>
-        ${nextSession() ? `<div class="next-chip">${icon('calendar-days', 15)} Next: <a class="strong-link" href="#/sessions/${nextSession().id}">${esc(nextSession().title)}</a> ${daysUntil(nextSession().session_date)}</div>` : ''}</section>
-    </div>
-    <div class="toolbar row-gap">
+    <div class="toolbar">
       <label class="sr" for="project">Project</label>
       <select class="input" id="project"><option value="">All projects</option>
         ${data.research_project.map((p) => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}</select>
@@ -39,16 +38,14 @@ function pageSessions(params, query) {
       <thead><tr><th scope="col">Date</th><th scope="col">Session</th><th scope="col" class="hide-sm">Method</th><th scope="col" class="hide-sm">Participants</th><th scope="col" class="hide-sm">Evidence</th><th scope="col">Status</th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
-    ${dbPanel(['M:N junction table', 'Composite primary key', 'GROUP BY', 'EXISTS'], `
--- Which sessions a participant joined (many-to-many through session_participant)
-select s.title, s.session_date
-from research_session s
-where exists (select 1 from session_participant sp where sp.session_id = s.id and sp.participant_id = 1);
 
--- The method donut
-select m.name, count(s.id) from research_method m
-left join research_session s on s.method_id = m.id group by m.name;`,
-    'session_participant has a composite primary key (session_id, participant_id), so the same person can never be added to a session twice.')}`;
+    <div class="section-head-row"><h2>Participants</h2>
+      <button class="btn btn-small" id="add-participant">${icon('user-plus', 15)} New participant</button></div>
+    <p class="muted" style="margin:-8px 0 16px">Identified by code only. TRACE never stores names or contact details.</p>
+    <div class="card table-card"><table class="table">
+      <thead><tr><th scope="col">Code</th><th scope="col">Age band</th><th scope="col" class="hide-sm">Segments</th><th scope="col">Sessions</th><th scope="col"><span class="sr">Edit</span></th></tr></thead>
+      <tbody>${data.participant.map(participantRow).join('')}</tbody>
+    </table></div>`;
   $('#project').value = String(projectId);
   $('#participant').value = String(participantId);
 
@@ -72,24 +69,13 @@ left join research_session s on s.method_id = m.id group by m.name;`,
   }
 
   $('#add').onclick = () => editSession(null, projectId || null);
+  $('#add-participant').onclick = () => editParticipant();
+  $$('[data-participant]').forEach((b) => { b.onclick = () => editParticipant(byId('participant', Number(b.dataset.participant))); });
   $('#project').onchange = (event) => { projectId = event.target.value ? Number(event.target.value) : ''; draw(); };
   $('#participant').onchange = (event) => { participantId = event.target.value ? Number(event.target.value) : ''; draw(); };
   draw();
 }
 
-// A thin bar showing how many observations were negative, neutral, positive.
-function sentimentMix(observations) {
-  if (observations.length === 0) return '';
-  const parts = [['negative', CHART_COLORS.negative], ['neutral', CHART_COLORS.neutral], ['positive', CHART_COLORS.positive]];
-  let bar = '';
-  let legend = '';
-  for (const [mood, color] of parts) {
-    const count = observations.filter((o) => o.sentiment === mood).length;
-    bar += `<i style="width:${(count / observations.length) * 100}%;background:${color}"></i>`;
-    legend += `<span><b>${count}</b> ${mood}</span>`;
-  }
-  return `<div style="margin-bottom:20px"><div class="mix" role="img" aria-label="Sentiment">${bar}</div><div class="mix-legend">${legend}</div></div>`;
-}
 
 function pageSession(params) {
   const s = byId('research_session', Number(params.id));
@@ -124,7 +110,7 @@ function pageSession(params) {
       </div>
     </section>
     <div class="grid-main row-gap">
-      <section class="card"><div class="card-top"><h3>Observations (${observations.length})</h3></div>${sentimentMix(observations)}${observationList}</section>
+      <section class="card"><div class="card-top"><h3>Observations (${observations.length})</h3></div>${observationList}</section>
       <div class="stack">
         <section class="card"><div class="card-top"><h3>Participants</h3></div>
           <div class="pills">${people.map((p) => `<a href="#/sessions?participant=${p.id}">${pill(p.participant_code, 'purple')}</a>`).join('') || '<span class="quiet">None added.</span>'}</div>
@@ -135,14 +121,7 @@ function pageSession(params) {
         ${s.notes ? `<section class="card"><div class="card-top"><h3>Notes</h3></div><p class="muted">${esc(s.notes)}</p></section>` : ''}
       </div>
     </div>
-    <div class="grid-2 row-gap">${sourcesBlock('research_session', s.id)}${notesBlock('research_session', s.id)}</div>
-    ${dbPanel(['Foreign key (1:N)', 'ON DELETE RESTRICT', 'NOT NULL'], `
--- Each observation must belong to a session (session_id is NOT NULL + foreign key)
-select title, sentiment from observation where session_id = ${s.id};
-
--- The database refuses to delete a session that still has observations
-alter table observation add constraint observation_session_fk
-  foreign key (session_id) references research_session (id) on delete restrict;`)}`;
+    <div class="grid-2 row-gap">${sourcesBlock('research_session', s.id)}${notesBlock('research_session', s.id)}</div>`;
 
   hookAttachments(view);
   $('#edit').onclick = () => editSession(s);

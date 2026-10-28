@@ -19,11 +19,10 @@ Pick any decision and TRACE shows the real observations behind it. Every link is
 3. [How the code fits together](#how-the-code-fits-together)
 4. [The database (sql folder)](#the-database-sql-folder)
 5. [Security model](#security-model)
-6. [Optional: real AI answers](#optional-real-ai-answers)
-7. [Push to GitHub and deploy on Vercel](#push-to-github-and-deploy-on-vercel)
-8. [Testing](#testing)
-9. [Troubleshooting](#troubleshooting)
-10. [Known limitations](#known-limitations)
+6. [Push to GitHub and deploy on Vercel](#push-to-github-and-deploy-on-vercel)
+7. [Testing](#testing)
+8. [Troubleshooting](#troubleshooting)
+9. [Known limitations](#known-limitations)
 
 More documents:
 
@@ -37,21 +36,20 @@ More documents:
 
 ## What's in the app
 
+Six pages, one main flow: **trace a design decision back to the sources it came from.**
+
 | Page | What you can do | Main DBMS idea |
 | --- | --- | --- |
-| **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
-| **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
-| **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view. Each record page tells **the story so far**: everything it rests on and everything it led to, with the photos inline. | UNION ALL view, WHERE / ILIKE, recursive CTE |
-| **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
-| **Evidence trail** (the main flow) | Pick a decision and follow it back, step by step, to the observations, sessions and **source photos** it came from. Lines show every link; click a source to read its pinned notes. | Recursive CTE, junction tables, exclusive arc |
-| **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
-| **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
-| **Database** | Schema diagram, rows per table, a feature-to-concept map, and a query lab that runs the real views | Everything, in one place |
-| **Quick answers** | A reference panel: pick a common question or type your own (key insights, strongest decisions, gaps, pain points, project summaries) | Each answer names the query it used |
+| **Home** | Totals, a short list of decisions to trace, and the next planned session | Aggregates, views |
+| **Projects** | A table of projects with their team and evidence; create, edit, archive (with Undo) and restore. Each project page lists its sessions and research questions | JOINs, soft delete, triggers |
+| **Sessions** | All sessions with project and participant filters, and the participant list (codes only). Session pages hold observations, sources and notes | Foreign keys, many-to-many junction tables |
+| **Evidence** | The five kinds of evidence in folder tabs, with search. Each record page shows the record, **the story so far** (what it rests on and what it led to), its sources and its notes | UNION ALL view, WHERE / ILIKE, recursive CTE |
+| **Trace** (the main flow) | Pick a decision and follow it back to the observations, sessions and **source photos** behind it. Click a photo to read its pinned notes | Recursive CTE, junction tables, exclusive arc |
+| **Database** | The schema, which DBMS concept powers each feature, and a query lab that runs the key views | Everything, in one place |
 
-Every page ends with a **"How the database does this"** panel that names the concepts behind it and shows the SQL.
+**Sources and notes:** on any session or record, add a photo (a whiteboard, sketch or notes page), pin notes on it, and leave notes for the team.
 
-**Keyboard shortcuts:** `/` search, `N` add something new, `A` quick answers, `?` show shortcuts, `Esc` close.
+**Keyboard:** `/` jumps to search, `Esc` closes a dialog.
 
 **Demo data:** TRACE opens with a fictional sample study (the same rows as `sql/04_seed_data.sql`). Anything you add is kept in this browser with localStorage, so it is still there after a reload. To start again from the original sample, clear the site's data in your browser settings.
 
@@ -76,22 +74,19 @@ The JavaScript uses plain `<script>` tags, with no framework, modules or build s
 
 ```
 index.html                  the page shell and the order scripts load in
-js/config.js                the optional AI switch
 js/icons.js                 icon shapes (Lucide)
 js/sample-data.js           the fictional sample study (generated from tools/generate_seed.py)
 js/helpers.js               esc() for safe HTML, icons, dates, toasts, dialogs, the form builder
 js/charts.js                charts and dashboard components (sparklines, gauge, pill columns, leaderboard…) made from HTML + CSS
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
-js/assistant.js             Quick answers
 js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
-js/pages/*.js               one file per page: home, projects, library, trail, sources, sessions, people, database
-js/app.js                   start-up, sidebar, shortcuts, and which page to show for each address
+js/pages/*.js               one file per page: home, projects, sessions, library (evidence), trail (trace), database
+js/app.js                   start-up, sidebar, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)
 css/style.css               all styles, in numbered sections
 sql/                        01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 06 views, 99 uninstall
-api/ask.js                  optional Vercel function for real AI answers
 assets/                     logo, favicon, fonts, liquid.webp (still background), sources/ (the illustrated research artefacts)
 tools/                      generate_seed.py (sample data), generate_sources.py (draws the illustrated sources)
 tests/                      SQL tests and browser tests (not deployed)
@@ -140,15 +135,6 @@ This is designed into `sql/03_security.sql` and tested by the SQL tests. The bro
 - **Don't store real participant data in this demo.** Public read access is fine only because the data is fictional.
 - Every value shown on screen goes through `esc()`. `vercel.json` sets a Content Security Policy that only allows the site's own scripts and connections.
 
-## Optional: real AI answers
-
-**Quick answers** works without any AI: it answers from your data using the same queries as the charts. To have Claude answer instead, using a short summary of your research as context:
-
-1. Deploy to Vercel (see below).
-2. In Vercel → Project → **Settings → Environment Variables**, add `ANTHROPIC_API_KEY` (from <https://console.anthropic.com>). Optionally add `ANTHROPIC_MODEL`; the default in `api/ask.js` is `claude-haiku-5-5`. Check current model names at <https://docs.claude.com/en/api/overview> first.
-3. Set `const AI_ASSISTANT = true;` in `js/config.js`, commit and push.
-
-The key stays on the server and never reaches the browser. If the AI can't be reached, Quick answers says so and answers from the data instead. Anyone who can open the site can use the endpoint, and that spends your API credit, so turn it off after the demo. **This AI path has not been tested**, because no API key was available while building TRACE.
 
 ## Push to GitHub and deploy on Vercel
 
@@ -163,7 +149,7 @@ git push -u origin main
 
 Sign in through the browser prompt, or with `gh auth login`. Never paste a token into a chat or a commit. To put your own name on the commits first, run `git commit --amend --reset-author`, since the existing commits use a placeholder author.
 
-**Vercel:** at <https://vercel.com/new>, import the repository. Choose framework preset **Other**, with no build command and the default output directory. No environment variables are needed, unless you enable AI answers. Once it's deployed, open the URL and check that the sample study appears, that you can add a project and still see it after reloading, and that the browser console shows no errors.
+**Vercel:** at <https://vercel.com/new>, import the repository. Choose framework preset **Other**, with no build command and the default output directory. No environment variables are needed. Once it's deployed, open the URL and check that the sample study appears, that you can add a project and still see it after reloading, and that the browser console shows no errors.
 
 TRACE uses `#/` addresses, so no rewrite rules are needed.
 
@@ -174,7 +160,7 @@ Results are recorded in `docs/testing-checklist.md`.
 | Suite | Command | Needs |
 | --- | --- | --- |
 | SQL integrity, security, views (33 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Every user flow in the browser (25 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
+| Every user flow in the browser (26 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
 
 ## Troubleshooting
 
@@ -192,5 +178,4 @@ Results are recorded in `docs/testing-checklist.md`.
 
 - The app is a browser demo: data lives in this browser's localStorage. The real PostgreSQL design, with constraints, triggers, views, RLS and seed data, is in `sql/` and is tested separately.
 - The liquid background needs a graphics card to run smoothly. It was built and checked on a machine without one (about 4 frames a second there), so real-device smoothness hasn't been measured. It draws at 40% resolution and at most 30 frames a second to stay light.
-- The optional AI answers (`api/ask.js`) are untested, because no API key was available.
 - One user, no sign-in, no real-time collaboration, no file uploads.
