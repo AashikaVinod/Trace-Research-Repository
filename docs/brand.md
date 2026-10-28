@@ -72,7 +72,9 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 | Concentric rings funnel | Evidence trail | Financial dashboard |
 | Grid / list toggle, folder tabs, document cards | Research library | Repository and Files references |
 
-All of them are small functions in `js/charts.js` that return HTML.
+| Polaroid sources, pinned notes, sticky-note style comments | Sources, record and session pages | Files reference, plus real research walls |
+
+All of them are small functions in `js/charts.js` and `js/attachments.js` that return HTML.
 
 ## Voice
 

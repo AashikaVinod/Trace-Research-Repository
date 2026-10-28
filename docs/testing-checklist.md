@@ -23,9 +23,9 @@ The browser was headless Chromium running the vendored `supabase-js` 2.117.3, wi
 
 | Suite | Result |
 | --- | --- |
-| SQL integrity, security and view tests (`tests/run-sql-tests.sh`) | 33/33 passed |
-| Every user flow (`tests/e2e.mjs`) | 25/25 passed |
-| Layout at 9 screen sizes (320×640 up to 1920×1080), all 11 pages | No sideways scrolling, and the sidebar never spills out of the window |
+| SQL integrity, security, view and sources tests (`tests/run-sql-tests.sh`) | 40/40 passed |
+| Every user flow (`tests/e2e.mjs`), including uploading a photo, pinning a note on it, adding notes, the flow journey and the Sources library | 29/29 passed |
+| Layout at 9 screen sizes (320×640 up to 1920×1080), all 13 pages | No sideways scrolling, and the sidebar never spills out of the window |
 | Text contrast on the glass over the moving liquid (113,000+ light-surface pixels sampled from screenshots) | 99% at 5.11:1 or better (AA needs 4.5); the few lower pixels are borders and chart hatching, not text backgrounds |
 | Liquid background (WebGL on), all 11 pages | No errors |
 | Colour contrast of all 17 palette text pairs | All pass WCAG AA |

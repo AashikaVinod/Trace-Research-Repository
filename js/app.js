@@ -18,6 +18,9 @@ const ROUTES = [
   ['/sessions/:id', pageSession],
   ['/people', pagePeople],
   ['/database', pageDatabase],
+  ['/flows', pageFlows],
+  ['/flow/:type/:id', pageFlow],
+  ['/sources', pageSources],
 ];
 
 // Reads "#/projects/2?show=all" into { page, path, params, query }.
@@ -63,7 +66,8 @@ function render() {
   closeMenu();
   const section = '/' + (path.split('/')[1] || '');
   for (const link of $$('[data-nav]')) {
-    const active = link.dataset.nav === (section === '/record' ? '/library' : section);
+    const sectionFor = { '/record': '/library', '/flow': '/flows' };
+    const active = link.dataset.nav === (sectionFor[section] || section);
     link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   }
@@ -129,7 +133,7 @@ function handleShortcut(event) {
 // -------------------------------------------------------------------
 
 function start() {
-  const navIcons = { '/': 'house', '/projects': 'folder-kanban', '/library': 'files', '/trail': 'waypoints', '/sessions': 'calendar-days', '/people': 'users', '/database': 'database' };
+  const navIcons = { '/': 'house', '/projects': 'folder-kanban', '/library': 'files', '/trail': 'waypoints', '/sessions': 'calendar-days', '/people': 'users', '/database': 'database', '/flows': 'route', '/sources': 'images' };
   for (const link of $$('[data-nav]')) link.insertAdjacentHTML('afterbegin', icon(navIcons[link.dataset.nav]));
   $('#menu-btn').innerHTML = icon('menu');
   $('#search-icon').innerHTML = icon('search', 16);

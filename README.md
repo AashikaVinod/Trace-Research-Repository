@@ -42,6 +42,8 @@ More documents:
 | **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
 | **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
 | **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view | UNION ALL view, WHERE / ILIKE |
+| **Flows** | Every insight, decision, finding or recommendation as its own journey: a step-by-step page from observations to decisions, with the sources and notes at each step | Recursive CTE, exclusive arc |
+| **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
 | **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
 | **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
@@ -83,15 +85,16 @@ js/charts.js                charts and dashboard components (sparklines, gauge, 
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
 js/assistant.js             Quick answers
-js/pages/*.js               one file per page: home, projects, library, trail, sessions, people, database
+js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
+js/pages/*.js               one file per page: home, projects, library, trail, flows, sources, sessions, people, database
 js/app.js                   start-up, sidebar, shortcuts, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)
 css/style.css               all styles, in numbered sections
 sql/                        01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 06 views, 99 uninstall
 api/ask.js                  optional Vercel function for real AI answers
-assets/                     logo, favicon, fonts, liquid.webp (still image used if WebGL is unavailable)
-tools/                      generate_seed.py (sample data)
+assets/                     logo, favicon, fonts, liquid.webp (still background), sources/ (the illustrated research artefacts)
+tools/                      generate_seed.py (sample data), generate_sources.py (draws the illustrated sources)
 tests/                      SQL tests and browser tests (not deployed)
 ```
 
@@ -114,6 +117,8 @@ The app runs as a browser demo, but the database behind its design is real Postg
 | 3 | `sql/03_security.sql` | Row Level Security, grants, the `trace_editor` allowlist (needs Supabase's `auth` schema, or the stubs in `tests/sql/00_supabase_local_stubs.sql`) |
 | 4 | `sql/04_seed_data.sql` | The same fictional study the app shows |
 | 5 | `sql/06_views.sql` | 9 views and the recursive `trace_lineage` function, the ones in the Database page's query lab |
+| 6 | `sql/07_sources_and_notes.sql` | Sources, notes and annotation pins (exclusive arc, weak entity), with RLS and the `v_source_owner` view |
+| 7 | `sql/08_sources_seed.sql` | The sample study's sources, notes and pins |
 | optional | `sql/05_demo_queries.sql` | Ten read-only queries to show in class |
 
 Only `99_uninstall_trace.sql` deletes anything, and it refuses to run until you uncomment its confirmation line.
@@ -182,6 +187,9 @@ Results are recorded in `docs/testing-checklist.md`.
 | I want the original sample back | Clear this site's data in your browser settings (it is stored in localStorage). |
 
 ## Known limitations
+
+- The sample study's sources are **illustrations** (drawn by `tools/generate_sources.py` in a handwriting font), not photos of real artefacts. They are labelled "Illustration" in the viewer. Your uploads are labelled "Uploaded".
+- Uploaded photos are resized and kept in this browser's storage, which holds only a few MB (roughly 20–30 photos). TRACE warns you when it's full. In PostgreSQL, `source.file_url` would point to file storage, not hold the image itself.
 
 - The app is a browser demo: data lives in this browser's localStorage. The real PostgreSQL design, with constraints, triggers, views, RLS and seed data, is in `sql/` and is tested separately.
 - The liquid background needs a graphics card to run smoothly. It was built and checked on a machine without one (about 4 frames a second there), so real-device smoothness hasn't been measured. It draws at 40% resolution and at most 30 frames a second to stay light.

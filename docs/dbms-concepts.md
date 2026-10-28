@@ -58,7 +58,18 @@ Suggested demo order (about 10 minutes): Home → Projects → New project (cons
 | **Pattern matching (ILIKE)** | Search across titles and text | Library search |
 | **Date functions** | `date_trunc('month', session_date)` | Sessions per month |
 
-## 5. Transactions and storage
+## 5. Sources, notes and annotation pins (sql/07)
+
+| Concept | Where it is | What to show |
+| --- | --- | --- |
+| **Exclusive arc** | `source` and `note` have one foreign key per possible owner (session, observation, finding, insight, recommendation, decision) and `CHECK (num_nonnulls(...) = 1)` | Add a source on a finding: exactly one column is filled. Compare it with a "type + id" design, which can't have real foreign keys |
+| **Weak entity** | `annotation` (a pin) only exists with its `source`: `ON DELETE CASCADE` | Open a source and pin a note; deleting the source would remove its pins |
+| **ON DELETE RESTRICT vs CASCADE** | `note.author_id` is RESTRICT (you can't delete a researcher who wrote notes); pins are CASCADE | Explain why the two rules differ |
+| **CHECK on numbers** | Pin positions `x` and `y` must be between 0 and 1 | Pins are stored as fractions of the image, so they stay in place at any size |
+| **CASE and COALESCE** | `v_source_owner` shows what each source is attached to | Database page → Query lab → "What each source is attached to" |
+| **Storing files** | `file_url` holds a link, not the image (a BLOB would bloat the table) | Talking point: databases store references to files in object storage |
+
+## 6. Transactions and storage
 
 | Concept | Where | Talking point |
 | --- | --- | --- |
@@ -67,7 +78,7 @@ Suggested demo order (about 10 minutes): Home → Projects → New project (cons
 | **Sequences / identity** | `setval(...)` after loading seed data with fixed ids | Why new rows don't clash with seeded ids |
 | **Indexes** | Indexes on foreign keys and dates (`sql/02`) | Keep JOINs and "recent" lists fast as data grows |
 
-## 6. Security
+## 7. Security
 
 | Concept | Where | What to show |
 | --- | --- | --- |

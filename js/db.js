@@ -18,6 +18,7 @@ const TABLES = [
   'participant', 'participant_segment', 'research_question', 'research_session', 'session_participant',
   'session_question', 'observation', 'finding', 'insight', 'recommendation', 'design_decision',
   'observation_finding', 'finding_insight', 'insight_recommendation', 'recommendation_decision',
+  'source', 'note', 'annotation',
 ];
 
 // The evidence chain. `link` is the junction table that joins the
@@ -49,6 +50,16 @@ const COLUMNS = {
   insight: ['project_id', 'title', 'description', 'impact'],
   recommendation: ['project_id', 'title', 'description', 'priority', 'status'],
   design_decision: ['project_id', 'title', 'description', 'status', 'decided_on'],
+  source: ['title', 'kind', 'caption', 'file_url', 'is_illustration', 'session_id', 'observation_id', 'finding_id', 'insight_id', 'recommendation_id', 'decision_id'],
+  note: ['body', 'author_id', 'session_id', 'observation_id', 'finding_id', 'insight_id', 'recommendation_id', 'decision_id'],
+  annotation: ['source_id', 'x', 'y', 'body', 'author_id'],
+};
+
+// Sources and notes can belong to a session or any evidence record. Each
+// possible owner has its own column (the "exclusive arc" in sql/07).
+const OWNER_COLUMN = {
+  research_session: 'session_id', observation: 'observation_id', finding: 'finding_id',
+  insight: 'insight_id', recommendation: 'recommendation_id', design_decision: 'decision_id',
 };
 
 function pick(table, values) {
@@ -94,13 +105,19 @@ function loadSample() {
     sample = null;
   }
   if (!sample) sample = copy(SAMPLE_DATA);
+  // Data saved by an older version may be missing newer tables: add them.
+  for (const table of TABLES) {
+    if (!sample[table]) sample[table] = copy(SAMPLE_DATA[table] || []);
+  }
 }
 
+// Returns false if the browser refused to store the data (for example, it's full of photos).
 function saveSample() {
   try {
     localStorage.setItem(SAMPLE_KEY, JSON.stringify(sample));
+    return true;
   } catch (error) {
-    // Storage is blocked (private browsing): changes last until reload.
+    return false; // changes stay on screen until the page is reloaded
   }
 }
 
@@ -116,6 +133,11 @@ function checkRules(table, row, existing = null) {
   }
   if (STAGE[table] && table !== 'observation' && others.some((r) => r.project_id === row.project_id && same(r.title, row.title))) {
     throw fieldError('title', 'This project already has a record with this title.');
+  }
+  // Exclusive arc: a source or note belongs to exactly one thing (a CHECK in PostgreSQL).
+  if (table === 'source' || table === 'note') {
+    const owners = Object.values(OWNER_COLUMN).filter((column) => row[column] !== null && row[column] !== undefined);
+    if (owners.length !== 1) throw fieldError('attach', 'Choose one thing to attach this to.');
   }
   // Archived projects accept no new work (a trigger does this in PostgreSQL).
   let projectId = row.project_id;
@@ -371,6 +393,12 @@ function runView(name, args = {}) {
   }
   if (name === 'v_sessions_by_month') return sessionsByMonth().map((m) => ({ month: m.month, sessions: m.sessions }));
   if (name === 'v_participants_by_segment') return participantsBySegment();
+  if (name === 'v_source_owner') {
+    return data.source.map((s) => {
+      const owner = ownerOf(s);
+      return { id: s.id, title: s.title, kind: s.kind, attached_to: owner.type, attached_id: owner.id, pins: pinsFor(s.id).length };
+    });
+  }
   if (name === 'v_decision_strength') return decisionStrength().map((d) => ({ id: d.id, title: d.title, status: d.status, observations: d.observations, sessions: d.sessions }));
   throw new Error(`Unknown query ${name}`);
 }
@@ -517,4 +545,86 @@ function nextSession() {
     .filter((s) => s.status === 'planned')
     .sort((a, b) => (a.session_date > b.session_date ? 1 : -1));
   return upcoming[0] || null;
+}
+
+
+// ----- Sources, notes and annotation pins ------------------------------
+
+// Everything attached to one session or record.
+function sourcesFor(type, id) {
+  return data.source.filter((s) => s[OWNER_COLUMN[type]] === id);
+}
+function notesFor(type, id) {
+  return data.note.filter((n) => n[OWNER_COLUMN[type]] === id).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
+}
+function pinsFor(sourceId) {
+  return data.annotation.filter((a) => a.source_id === sourceId).sort((a, b) => a.id - b.id);
+}
+
+// What a source or note is attached to: { type, id, title, href }.
+function ownerOf(row) {
+  for (const type in OWNER_COLUMN) {
+    const id = row[OWNER_COLUMN[type]];
+    if (id) {
+      const record = byId(type, id);
+      const href = type === 'research_session' ? `#/sessions/${id}` : `#/record/${type}/${id}`;
+      return { type, id, title: record ? record.title : 'Removed', href, label: type === 'research_session' ? 'Session' : STAGE[type].label };
+    }
+  }
+  return null;
+}
+
+// The project a source belongs to (through whatever it's attached to).
+function projectOfSource(source) {
+  const owner = ownerOf(source);
+  if (!owner) return null;
+  const record = byId(owner.type, owner.id);
+  return record ? record.project_id : null;
+}
+
+// Every source along a record's whole journey, plus the sessions its observations came from.
+function journeySources(type, id) {
+  const trail = lineage(type, id);
+  const found = [];
+  for (const stage of STAGES) {
+    for (const record of trail.byStage[stage.type]) found.push(...sourcesFor(stage.type, record.id));
+  }
+  const sessionIds = new Set(trail.byStage.observation.map((o) => o.session_id));
+  for (const sessionId of sessionIds) found.push(...sourcesFor('research_session', sessionId));
+  return [...new Map(found.map((s) => [s.id, s])).values()];
+}
+
+// Attaches a new source (or updates one). `attach` is "type:id", e.g. "finding:3".
+function saveSource(id, values) {
+  const row = pick('source', values);
+  if (values.attach) {
+    const [type, ownerId] = values.attach.split(':');
+    for (const column of Object.values(OWNER_COLUMN)) row[column] = null;
+    row[OWNER_COLUMN[type]] = Number(ownerId);
+  }
+  const saved = id ? updateRow('source', id, row) : insertRow('source', { kind: 'photo', is_illustration: false, ...row });
+  loadAll();
+  if (!saveSample()) throw Object.assign(new Error('Your browser storage is full, so this photo will disappear when you reload. Try a smaller image.'), { saved });
+  return saved;
+}
+
+function saveNote(type, ownerId, values) {
+  const row = pick('note', values);
+  row[OWNER_COLUMN[type]] = ownerId;
+  const saved = insertRow('note', row);
+  loadAll();
+  return saved;
+}
+
+function savePin(sourceId, values) {
+  const saved = insertRow('annotation', { source_id: sourceId, ...pick('annotation', values) });
+  loadAll();
+  return saved;
+}
+
+// Notes and pins can be deleted (like DELETE ... WHERE id = ...).
+function deleteRow(table, id) {
+  sample[table] = sample[table].filter((r) => r.id !== id);
+  saveSample();
+  loadAll();
 }

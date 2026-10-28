@@ -144,6 +144,28 @@ end $$;
 select pg_temp.expect_ok('VIEW: visitors can read views and call trace_lineage', 'anon', null,
   $q$select (select count(*) from public.v_project_summary) + (select count(*) from public.trace_lineage('finding', 1))$q$);
 
+-- ---- Sources, notes and pins (sql/07) ---------------------------------
+select pg_temp.expect_error('EXCLUSIVE ARC: a source cannot belong to two records', 'postgres', null,
+  $q$insert into public.source (title, file_url, finding_id, insight_id) values ('Two parents', 'x.webp', 1, 1)$q$, '23514');
+select pg_temp.expect_error('EXCLUSIVE ARC: a source must belong to something', 'postgres', null,
+  $q$insert into public.source (title, file_url) values ('No parent', 'x.webp')$q$, '23514');
+select pg_temp.expect_error('CHECK: source kind vocabulary', 'postgres', null,
+  $q$insert into public.source (title, kind, file_url, finding_id) values ('Bad kind', 'video', 'x.webp', 1)$q$, '23514');
+select pg_temp.expect_error('CHECK: annotation pins stay on the image', 'postgres', null,
+  $q$insert into public.annotation (source_id, x, y, body, author_id) values (1, 1.2, 0.5, 'Off the edge', 1)$q$, '23514');
+select pg_temp.expect_error('FK: a note needs a real author', 'postgres', null,
+  $q$insert into public.note (body, author_id, finding_id) values ('Who wrote this?', 999, 1)$q$, '23503');
+do $$
+declare n int;
+begin
+  delete from public.source where id = 1;
+  select count(*) into n from public.annotation where source_id = 1;
+  if n = 0 then raise notice 'PASS  WEAK ENTITY: deleting a source deletes its pins (ON DELETE CASCADE)';
+  else raise exception 'FAIL  % pins left behind', n; end if;
+end $$;
+select pg_temp.expect_error('RLS: visitors cannot add notes', 'anon', null,
+  $q$insert into public.note (body, author_id, finding_id) values ('Anon note', 1, 1)$q$, '42501');
+
 -- Writes performed directly as the API role (not inside a helper function),
 -- exactly as PostgREST runs them, so trigger permissions are exercised.
 set local role authenticated;

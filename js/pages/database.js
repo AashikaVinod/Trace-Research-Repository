@@ -17,6 +17,11 @@ const SCHEMA = [
     { name: 'research_question', columns: [['pk', 'id'], ['fk', 'project_id'], ['', 'question_text']] },
     { name: 'research_session', columns: [['pk', 'id'], ['fk', 'project_id'], ['fk', 'method_id'], ['fk', 'researcher_id'], ['', 'session_date']] },
   ] },
+  { group: 'Sources and notes', tables: [
+    { name: 'source', columns: [['pk', 'id'], ['', 'title, kind (check)'], ['', 'file_url'], ['fk', 'session_id … decision_id'], ['', 'exactly one owner (check)']] },
+    { name: 'note', columns: [['pk', 'id'], ['', 'body'], ['fk', 'author_id'], ['fk', 'session_id … decision_id']] },
+    { name: 'annotation', columns: [['pk', 'id'], ['fk', 'source_id (cascade)'], ['', 'x, y (0 to 1)'], ['', 'body'], ['fk', 'author_id']] },
+  ] },
   { group: 'Evidence chain', tables: [
     { name: 'observation', stage: 'observation', columns: [['pk', 'id'], ['fk', 'session_id'], ['', 'title'], ['', 'sentiment (check)']] },
     { name: 'finding', stage: 'finding', columns: [['pk', 'id'], ['fk', 'project_id'], ['', 'title'], ['', 'confidence']] },
@@ -57,6 +62,11 @@ const CONCEPT_MAP = [
   ['"Last updated" dates', 'BEFORE UPDATE trigger', 'trace_touch_updated_at'],
   ['Who may edit (designed in SQL)', 'Roles, GRANT, Row Level Security, security definer function', 'sql/03_security.sql'],
   ['Installing the database', 'Transactions (BEGIN / COMMIT), sequences', 'sql/01–04'],
+  ['Sources on any step', 'Exclusive arc: one FK per owner + CHECK num_nonnulls(...) = 1', 'source_one_parent in sql/07'],
+  ['Pinned notes on images', 'Weak entity, ON DELETE CASCADE', 'annotation in sql/07'],
+  ['Who wrote a note', 'Foreign key to researcher, ON DELETE RESTRICT', 'note.author_id'],
+  ['What a source is attached to', 'CASE and COALESCE in a view', 'v_source_owner'],
+  ['Flows page', 'Recursive CTE + sources found along the lineage', 'trace_lineage, source'],
 ];
 
 // Queries you can run from this page.
@@ -73,6 +83,8 @@ const QUERIES = [
     sql: "select to_char(date_trunc('month', session_date), 'YYYY-MM') as month, count(*)\nfrom research_session group by 1 order by 1;" },
   { view: 'v_participants_by_segment', title: 'Participants per segment', concept: 'Junction table + GROUP BY',
     sql: 'select g.name, count(ps.participant_id)\nfrom segment g left join participant_segment ps on ps.segment_id = g.id\ngroup by g.name;' },
+  { view: 'v_source_owner', title: 'What each source is attached to', concept: 'CASE + COALESCE over an exclusive arc',
+    sql: "select title, kind,\n  case when session_id is not null then 'research_session'\n       when finding_id is not null then 'finding' /* … */ end as attached_to,\n  coalesce(session_id, observation_id, finding_id, insight_id, recommendation_id, decision_id) as attached_id\nfrom source;" },
   { view: 'trace_lineage', title: 'The full lineage of decision #1', concept: 'Recursive CTE (WITH RECURSIVE)', args: { type: 'design_decision', id: 1 },
     sql: "select * from trace_lineage('design_decision', 1);" },
 ];
@@ -98,15 +110,15 @@ function pageDatabase() {
   view.innerHTML = `
     <header class="page-head">
       <div><h1>Database</h1>
-        <p>TRACE's database is designed for PostgreSQL: 12 entity tables, 9 junction tables, 9 views, a recursive function, 5 trigger functions and Row Level Security, all in the <code>sql/</code> folder.
+        <p>TRACE's database is designed for PostgreSQL: 15 entity tables (including sources, notes and pins), 9 junction tables, 10 views, a recursive function, 5 trigger functions and Row Level Security, all in the <code>sql/</code> folder.
         In this demo the app runs in your browser, so each query below is computed with the same logic as its SQL view.</p></div>
     </header>
 
     <div class="stats" aria-label="Database size">
-      ${statLink('#/database', 'Tables', TABLES.length + 1, '21 data tables + 1 editor list')}
+      ${statLink('#/database', 'Tables', TABLES.length + 1, `${TABLES.length} data tables + 1 editor list`)}
       ${statLink('#/database', 'Rows stored', totalRows, 'Across all tables')}
       ${statLink('#/database', 'Junction tables', JUNCTIONS.length, 'For many-to-many links')}
-      ${statLink('#/database', 'Views', 9, 'Plus 1 recursive function')}
+      ${statLink('#/database', 'Views', 10, 'Plus 1 recursive function')}
     </div>
 
     <section class="card">

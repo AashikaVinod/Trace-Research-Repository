@@ -18,7 +18,11 @@ begin
 end
 $$;
 
--- Views and the lineage function first (they depend on the tables).
+-- Sources, notes and pins (sql/07) first.
+drop view if exists public.v_source_owner;
+drop table if exists public.annotation, public.note, public.source;
+
+-- Views and the lineage function next (they depend on the tables).
 drop function if exists public.trace_lineage(text, bigint);
 drop view if exists public.v_decision_strength, public.v_participants_by_segment, public.v_sessions_by_month,
   public.v_sentiment_by_project, public.v_evidence_gap, public.v_project_summary, public.v_dashboard,

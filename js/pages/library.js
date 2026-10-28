@@ -163,6 +163,7 @@ function pageRecord(params) {
         <p class="paper-text">${esc(r.description)}</p>
         <div class="actions">
           <button class="btn" id="edit">${icon('pencil', 15)} Edit${prev ? ' and link' : ''}</button>
+          <a class="btn" href="#/flow/${type}/${r.id}">${icon('route', 15)} See its flow</a>
           <a class="btn" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} See its evidence trail</a>
         </div>
       </article>
@@ -181,6 +182,7 @@ function pageRecord(params) {
         ${project.archived_at ? '' : `<button class="btn btn-small" id="add-next">${icon('plus', 15)} ${next.label}</button>`}</div>
         ${leadsTo.length ? linkList(leadsTo) : `<p class="quiet">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
     </div>
+    <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>
     ${dbPanel(['M:N junction table', 'JOIN', 'Trigger (same-project check)', 'CHECK constraint'], prev ? `
 -- What this ${stage.label.toLowerCase()} is built on: a JOIN through the junction table
 select p.id, p.title
@@ -195,6 +197,7 @@ select * from observation where id = ${r.id};
 -- Its project is found through the session, not stored twice (3NF)
 select s.project_id from observation o join research_session s on s.id = o.session_id where o.id = ${r.id};`)}`;
 
+  hookAttachments(view);
   $('#edit').onclick = () => editRecord(type, r);
   if ($('#add-next')) $('#add-next').onclick = () => editRecord(next.type, null, { projectId: r.project_id, upIds: [r.id] });
 }

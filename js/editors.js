@@ -196,6 +196,7 @@ function openNewMenu() {
     ['project', 'folder-kanban', 'Project', 'Start a new study'],
     ['session', 'calendar-days', 'Session', 'An interview or test'],
     ['participant', 'user-plus', 'Participant', 'Anonymous, by code'],
+    ['source', 'upload', 'Source', 'A photo, sketch or document'],
   ];
   const hints = { observation: 'What someone did or said', finding: 'A pattern across sessions', insight: 'Why the pattern matters', recommendation: 'What should change', design_decision: 'What the team decided' };
   const evidence = STAGES.map((s) => [s.type, 'file-text', `${s.step}. ${s.label}`, hints[s.type]]);
@@ -219,6 +220,7 @@ function openNewMenu() {
     if (key === 'project') editProject();
     else if (key === 'session') editSession();
     else if (key === 'participant') editParticipant();
+    else if (key === 'source') editSource();
     else editRecord(key);
   });
 }

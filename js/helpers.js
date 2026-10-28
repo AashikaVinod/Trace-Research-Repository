@@ -201,6 +201,7 @@ function confirmBox(title, text, okLabel = 'Confirm') {
 //     half, help, disabled, number, dependsOn, check, emptyText }
 // type: text | email | date | number | textarea | select | checkboxes
 //       | section (a small heading that splits a long form into chunks)
+//       | file (an image picker; the value is the chosen File)
 // options: a list, or a function (current values) => list, which lets a
 // field change when another field changes (see dependsOn).
 function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) {
@@ -242,6 +243,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
         }
         return html + '</div>';
       }
+      if (field.type === 'file') return `<input class="input" type="file" accept="image/*" ${attributes}>`;
       return `<input class="input" type="${field.type || 'text'}" value="${esc(value)}" ${attributes}>`;
     }
 
@@ -282,6 +284,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
           result[field.name] = $$(`[data-field="${field.name}"] input:checked`, form).map((box) => Number(box.value));
           continue;
         }
+        if (field.type === 'file') { result[field.name] = $(`#f-${field.name}`, form).files[0] || null; continue; }
         const raw = $(`#f-${field.name}`, form).value.trim();
         if (raw === '') result[field.name] = null;
         else if (field.number || field.type === 'number') result[field.name] = Number(raw);
@@ -371,5 +374,30 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
 
     const first = $('.input:not([disabled])', form);
     if (first) first.focus();
+  });
+}
+
+
+// Shrinks a photo before it's stored (browsers only keep a few MB), and
+// returns it as a "data URL" string that can be saved like any text.
+function readImage(file, maxSize = 1400) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('Choose an image file (JPG, PNG or WebP).')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("That file couldn't be read."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("That image couldn't be opened."));
+      image.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(image.width * scale);
+        canvas.height = Math.round(image.height * scale);
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   });
 }

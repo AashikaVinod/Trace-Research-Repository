@@ -135,6 +135,7 @@ function pageSession(params) {
         ${s.notes ? `<section class="card"><div class="card-top"><h3>Notes</h3></div><p class="muted">${esc(s.notes)}</p></section>` : ''}
       </div>
     </div>
+    <div class="grid-2 row-gap">${sourcesBlock('research_session', s.id)}${notesBlock('research_session', s.id)}</div>
     ${dbPanel(['Foreign key (1:N)', 'ON DELETE RESTRICT', 'NOT NULL'], `
 -- Each observation must belong to a session (session_id is NOT NULL + foreign key)
 select title, sentiment from observation where session_id = ${s.id};
@@ -143,6 +144,7 @@ select title, sentiment from observation where session_id = ${s.id};
 alter table observation add constraint observation_session_fk
   foreign key (session_id) references research_session (id) on delete restrict;`)}`;
 
+  hookAttachments(view);
   $('#edit').onclick = () => editSession(s);
   if ($('#add-obs')) $('#add-obs').onclick = () => editRecord('observation', null, { sessionId: s.id });
 }

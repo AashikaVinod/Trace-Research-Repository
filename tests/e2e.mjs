@@ -137,6 +137,22 @@ await step('record and edit an observation', async () => {
   await page.locator('.facts', { hasText: 'Negative' }).waitFor();
 });
 
+await step('attach a photo to the observation and pin a note on it', async () => {
+  await page.locator('[data-add-source]').first().click();
+  await modal().locator('#f-file').setInputFiles(new URL('../assets/sources/library-mind-map.webp', import.meta.url).pathname);
+  await fill('Title', `Whiteboard ${RUN}`);
+  await save();
+  await page.locator('#viewer-image').waitFor();                       // the viewer opens on the new source
+  const box = await page.locator('#viewer-image').boundingBox();
+  await page.locator('#viewer-image').click({ position: { x: box.width * 0.4, y: box.height * 0.4 } });
+  await page.locator('#pin-body').fill('This cluster is the key moment.');
+  await page.locator('#pin-form button[type=submit]').click();
+  await page.locator('.pin-list', { hasText: 'This cluster is the key moment.' }).waitFor();
+  check(await page.locator('#viewer-image .pin').count() === 1, 'one pin on the image');
+  await page.keyboard.press('Escape');
+  await page.locator('.polaroid', { hasText: `Whiteboard ${RUN}` }).waitFor();
+});
+
 for (const [label, body] of [['Finding', 'Describe the pattern'], ['Insight', 'Why it matters'], ['Recommendation', 'What should change'], ['Decision', 'Rationale']]) {
   await step(`add a linked ${label.toLowerCase()}`, async () => {
     const before = (await page.locator('h1').textContent()).trim();
@@ -149,6 +165,29 @@ for (const [label, body] of [['Finding', 'Describe the pattern'], ['Insight', 'W
     await page.waitForSelector(`.link-item:has-text("${before}")`);
   });
 }
+
+await step('add a note to the decision', async () => {
+  await page.locator('.note-form textarea').fill(`Agreed in review ${RUN}.`);
+  await page.locator('.note-form button[type=submit]').click();
+  await page.locator('.notes', { hasText: `Agreed in review ${RUN}.` }).waitFor();
+});
+
+await step('the flow of the new insight is complete and shows the photo', async () => {
+  await open('/flows');
+  const card = page.locator('.flow-card', { hasText: `Insight ${RUN}` });
+  await card.waitFor();
+  check(await card.locator('text=Complete').count() === 1, 'flow marked complete');
+  check(await card.locator('.thumbs img').count() >= 1, 'source thumbnail on the card');
+  await card.click();
+  await page.waitForSelector('.journey');
+  check(await page.locator('.journey-item').count() === 5, `five steps, got ${await page.locator('.journey-item').count()}`);
+  check(await page.locator('.journey-item.is-focus', { hasText: `Insight ${RUN}` }).count() === 1, 'the insight is highlighted');
+  await page.locator('.polaroid', { hasText: `Whiteboard ${RUN}` }).waitFor();
+  await page.getByRole('link', { name: 'Open record' }).click();
+  await page.waitForSelector(`h1:has-text("Insight ${RUN}")`);
+  await page.goto(page.url().replace(/#.*/, `#/library?q=Decision ${RUN}`));
+  await page.locator('.doc').first().click();
+});
 
 await step('evidence trail shows the complete story with lines', async () => {
   await page.getByRole('link', { name: 'See its evidence trail' }).click();
@@ -228,6 +267,17 @@ await step('sessions: filter by participant', async () => {
   await page.locator('#participant').selectOption({ label: 'P-01' });
   const filtered = await page.locator('#rows tr').count();
   check(filtered > 0 && filtered < all, `${filtered} of ${all}`);
+});
+
+await step('sources library: folders and kinds filter the photos', async () => {
+  await open('/sources');
+  const all = await page.locator('.polaroid').count();
+  await page.locator('[data-kind="whiteboard"]').click();
+  const whiteboards = await page.locator('.polaroid').count();
+  check(whiteboards > 0 && whiteboards < all, `${whiteboards} of ${all}`);
+  await page.locator('[data-kind=""]').click();
+  await page.locator('.folder-card', { hasText: 'Library catalogue search' }).click();
+  check(await page.locator('.polaroid').count() === 2, 'library project has 2 sources');
 });
 
 // ---------- Safety nets ----------
