@@ -93,7 +93,7 @@ function docCard(r) {
       <span class="doc-type"><b>${stage.step}</b>${stage.label}</span>
       <p>${esc(shorten(r.description, 150))}</p>
     </div>
-    <div class="doc-info"><strong>${esc(r.title)}</strong>${meta(esc(project ? project.title : ''), status)}</div>
+    <div class="doc-info"><strong>${esc(r.title)}</strong>${meta(`${CODE_PREFIX[r.type]}-${String(r.id).padStart(2, '0')}`, esc(project ? project.title : ''), status)}</div>
   </a>`;
 }
 
@@ -111,6 +111,37 @@ function chainPosition(type, upCount, downCount) {
   return html + '</div>';
 }
 
+// "The story so far": the whole chain this record belongs to, written as
+// plain lists, the way a researcher would document it.
+const STORY_HEADINGS = {
+  observation: 'What we saw', finding: 'What we found', insight: 'What it means',
+  recommendation: 'What we suggested', design_decision: 'What we decided',
+};
+function storyBlock(type, record) {
+  const trail = lineage(type, record.id);
+  let html = '';
+  for (const stage of STAGES) {
+    const items = trail.byStage[stage.type];
+    html += `<div class="story-part stage-${stage.type}">
+      <h4>${STORY_HEADINGS[stage.type]} <span class="count">${items.length}</span></h4>
+      ${items.length ? `<ul>${items.map((item) => {
+        const isThis = stage.type === type && item.id === record.id;
+        const photos = sourcesFor(stage.type, item.id);
+        const session = stage.type === 'observation' ? byId('research_session', item.session_id) : null;
+        return `<li class="${isThis ? 'is-this' : ''}">${recordCode(stage.type, item.id)}
+          ${isThis ? `<strong>${esc(item.title)}</strong> <span class="quiet">(this ${stage.label.toLowerCase()})</span>` : `<a href="#/record/${stage.type}/${item.id}">${esc(item.title)}</a>`}
+          ${session ? `<span class="quiet"> from ${esc(session.title)}</span>` : ''}
+          ${photos.map((p) => `<button class="story-photo" data-open-source="${p.id}" aria-label="Open ${esc(p.title)}"><img src="${esc(p.file_url)}" alt=""></button>`).join('')}</li>`;
+      }).join('')}</ul>` : '<p class="quiet">Nothing yet.</p>'}
+    </div>`;
+  }
+  return `<section class="card story row-gap" id="story">
+    <div class="card-top"><div><h3>The story so far</h3><p class="card-sub">Everything this ${STAGE[type].label.toLowerCase()} rests on, and everything it led to</p></div>
+      <a class="text-link" href="#/trail/${type}/${record.id}">See it as a diagram ${icon('arrow-right', 14)}</a></div>
+    <div class="story-parts">${html}</div>
+  </section>`;
+}
+
 // A record as a table row (the list view, like the Repository reference).
 function recordRow(r) {
   const stage = STAGE[r.type];
@@ -119,7 +150,7 @@ function recordRow(r) {
   const uses = downstream(r.type, r.id).length;
   return `<tr>
     <td><span class="doc-type stage-${r.type}"><b>${stage.step}</b>${stage.label}</span></td>
-    <td><a class="strong-link" href="#/record/${r.type}/${r.id}">${esc(r.title)}</a></td>
+    <td>${recordCode(r.type, r.id)} <a class="strong-link" href="#/record/${r.type}/${r.id}">${esc(r.title)}</a></td>
     <td class="hide-sm">${esc(project ? project.title : '')}</td>
     <td class="hide-sm">${r.type === 'observation' ? '' : `${sources} in`}${r.type !== 'observation' && r.type !== 'design_decision' ? ', ' : ''}${r.type === 'design_decision' ? '' : `${uses} out`}</td>
     <td class="hide-sm nowrap">${formatDate(r.created_at)}</td>
@@ -158,12 +189,11 @@ function pageRecord(params) {
     <div class="record-layout">
       <article class="paper stage-${type}">
         ${chainPosition(type, builtOn.length, leadsTo.length)}
-        <span class="doc-type"><b>${stage.step}</b>${stage.label}</span>
+        <span class="doc-type"><b>${stage.step}</b>${stage.label}</span> ${recordCode(type, r.id)}
         <h1>${esc(r.title)}</h1>
         <p class="paper-text">${esc(r.description)}</p>
         <div class="actions">
           <button class="btn" id="edit">${icon('pencil', 15)} Edit${prev ? ' and link' : ''}</button>
-          <a class="btn" href="#/flow/${type}/${r.id}">${icon('route', 15)} See its flow</a>
           <a class="btn" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} See its evidence trail</a>
         </div>
       </article>
@@ -182,6 +212,7 @@ function pageRecord(params) {
         ${project.archived_at ? '' : `<button class="btn btn-small" id="add-next">${icon('plus', 15)} ${next.label}</button>`}</div>
         ${leadsTo.length ? linkList(leadsTo) : `<p class="quiet">Nothing builds on this yet. Add a ${next.label.toLowerCase()} based on it.</p>`}</section>` : ''}
     </div>
+    ${storyBlock(type, r)}
     <div class="grid-2 row-gap">${sourcesBlock(type, r.id)}${notesBlock(type, r.id)}</div>
     ${dbPanel(['M:N junction table', 'JOIN', 'Trigger (same-project check)', 'CHECK constraint'], prev ? `
 -- What this ${stage.label.toLowerCase()} is built on: a JOIN through the junction table

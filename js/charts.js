@@ -75,8 +75,8 @@ function funnelChart(counts, linkQuery = '') {
 
 // Colours for charts, from the brand palette.
 const CHART_COLORS = {
-  positive: '#17a173', neutral: '#b9b7ae', negative: '#ef7d3c',
-  series: ['#7c6cf0', '#2f7fd8', '#17a173', '#ef7d3c', '#15161c', '#c9a227'],
+  positive: '#6f9f8f', neutral: '#bdb1a0', negative: '#d4602a',
+  series: ['#8a9a5b', '#6f9f8f', '#c99a2e', '#d4602a', '#2a211b', '#9c7b5e'],
 };
 
 // ===================================================================
@@ -167,7 +167,7 @@ function concentricFunnel(counts) {
 // financial dashboard reference). Drawn as tiny SVGs.
 function sentimentFaces(counts) {
   const mouths = { negative: 'M8 16.5c1.2-1.6 2.5-2.2 4-2.2s2.8.6 4 2.2', neutral: 'M8.5 15.5h7', positive: 'M8 14c1.2 1.6 2.5 2.2 4 2.2s2.8-.6 4-2.2' };
-  const colors = { negative: CHART_COLORS.negative, neutral: '#8f8d85', positive: CHART_COLORS.positive };
+  const colors = { negative: CHART_COLORS.negative, neutral: '#8e8273', positive: '#3f6f60' };
   let html = '<div class="faces">';
   for (const mood of ['negative', 'neutral', 'positive']) {
     html += `<div class="face face-${mood}">

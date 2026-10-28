@@ -45,7 +45,16 @@ The audit checked TRACE against **Nielsen's 10 usability heuristics**, **WCAG 2.
 | **Jakob's law** (work like other apps) | Familiar patterns: a sidebar, `/` to search, Esc to close, toasts with Undo. |
 | **Aesthetic-usability effect** | Consistent tokens, a real logo and calm spacing make the tool feel trustworthy. |
 
-## Human-made polish pass (latest round)
+## Simpler journey, more human (latest round)
+
+| Feedback | Change |
+| --- | --- |
+| The Flows page looked machine-made (cards of badges, progress pills, coloured timelines) | Removed. Each record page now has **"The story so far"**: plain headed lists (What we saw, What we found, What it means, What we suggested, What we decided) with tiny photo prints, the way researchers write up a study |
+| The colours felt generic | A **kiln** palette from glazed ceramics: oat, bark, persimmon, celadon, lichen, ochre. All text pairs pass AA |
+| The fonts weren't distinctive | **Gloock** headings, **Familjen Grotesk** text, **Martian Mono** for dates, counts and archive IDs, **Caveat** handwriting for sticky notes and pins |
+| Surfaces looked too polished | Flatter cards with small radii, never pure white, and a highlighter stroke behind titles |
+
+## Human-made polish pass (earlier round)
 
 | Issue | Change |
 | --- | --- |

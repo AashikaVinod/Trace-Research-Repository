@@ -10,50 +10,46 @@ The mark is a **trail of five dots** rising from left to right: one per evidence
 - The wordmark is **trace** in lowercase, Schibsted Grotesk ExtraBold (800), letter-spacing −0.045em. Place it to the right of the mark, with a gap of one-third of the mark's width.
 - Don't recolour, rotate or stretch the mark, and don't put the light mark on a dark background.
 
-## Colour palette
+## Colour palette: "kiln"
 
-All colours are defined in `css/tokens.css`.
+Taken from glazed ceramics (oat clay, bark, persimmon and celadon glazes), a palette almost never seen in software. All colours are defined in `css/tokens.css`.
 
 ### Core
 
 | Name | Hex | Use |
 | --- | --- | --- |
-| Trace Ink | `#15161c` | Text, primary buttons, the "decision" stage |
-| Trace Paper | `#f7f6f2` | The app window |
-| White | `#ffffff` | Cards |
-| Trace Green | `#1f5a45` | Links, focus rings, active navigation |
-| Green tint | `#e3eee8` | Concept tags, focus glow |
+| Bark | `#2a211b` | Text, primary buttons, the highlighted stat card, the "decision" stage |
+| Oat | `#efe8db` | The app window |
+| Rice paper | `#faf6ee` | Cards (never pure white) |
+| Persimmon glaze | `#a8441a` | Links, focus, active navigation, the highlighter stroke on titles |
+| Persimmon tint | `#f4dccb` | Highlighter, focus glow |
 
-### Evidence spectrum (one colour per stage)
+### Evidence stages
 
 | Stage | Fill | Text on tint | Tint |
 | --- | --- | --- | --- |
-| 1 Observation | `#7c6cf0` violet | `#5546c2` | `#efedfd` |
-| 2 Finding | `#2f7fd8` blue | `#1f5f9e` | `#e6f0fb` |
-| 3 Insight | `#17a173` green | `#0f7353` | `#e2f4ec` |
-| 4 Recommendation | `#ef7d3c` orange | `#9c4612` | `#fdede2` |
-| 5 Decision | `#15161c` ink | `#15161c` | `#e9e9ec` |
+| 1 Observation | `#8a9a5b` lichen | `#4c5726` | `#e7ead6` |
+| 2 Finding | `#6f9f8f` celadon | `#2e5c4f` | `#dae9e2` |
+| 3 Insight | `#c99a2e` ochre | `#6f520b` | `#f2e5c3` |
+| 4 Recommendation | `#d4602a` persimmon | `#8f360d` | `#f7dccb` |
+| 5 Decision | `#2a211b` bark | `#2a211b` | `#e4dccf` |
 
-Use the **fill** colour for shapes, bars and dots, and the **text** colour for small text on the tint. Every text pair passes WCAG AA (4.5:1).
-
-### Neutrals and feedback
-
-| Name | Hex | Use |
-| --- | --- | --- |
-| Ink 2 | `#4f535c` | Secondary text |
-| Ink 3 | `#575b64` | Quiet text (6.8:1 on white, 5.2:1 at worst on the glass) |
-| Line | `#e7e5df` | Borders |
-| Danger | `#b4362a` | Errors |
+Every text pair passes WCAG AA (checked with a script). The quiet grey `#685c51` is 5.3:1 on oat.
 
 ## Type
 
-- **Bricolage Grotesque** (display): headings, big numbers, the wordmark. It has real character (ink traps, a quirky "a" and "g") that stops TRACE looking like a template.
-- **Onest** (text): everything you read, from labels and tables to long descriptions. It is clean and slightly distinctive.
-- Scale: 46 (stat numbers) / 32 (page titles) / 22–26 (card headlines) / 17 / 15 / 13 / 12 px.
+| Font | Use | Why |
+| --- | --- | --- |
+| **Gloock** | Headings, big numbers, the wordmark | A rare, high-contrast display serif with a lot of character |
+| **Familjen Grotesk** | Everything you read | A slightly quirky Swedish grotesk, warmer than the usual UI fonts |
+| **Martian Mono** | Dates, counts, tags, record IDs (OBS-04, INS-02) | Makes TRACE read like a research archive |
+| **Caveat** | Sticky notes and pins on images | Notes are handwritten in real research, so they are here too |
+
+Page titles get a persimmon **highlighter stroke**, like a marked-up printout.
 
 ## Background and glass
 
-- **Liquid.** A WebGL shader (`js/background.js`) draws big, slow folds of **molten amber on black** (black → deep brown → copper → amber → cream), with a little fine texture inside the folds, like your liquid-gold reference. It pairs with the deep Trace Green used in the app. `assets/liquid.webp` is a still frame, used when WebGL isn't available.
+- **Liquid.** A WebGL shader (`js/background.js`) draws big, slow folds of **celadon glaze** (near-black spruce → deep green → celadon → pale jade → oat). `assets/liquid.webp` is a still frame, used when WebGL isn't available.
 - **Glass.** The app window is `rgba(248, 247, 243, 0.9)`, so a faint tint of the liquid shows through. Cards are `rgba(255, 255, 255, 0.92)` with a faint border. There is no live blur, which keeps it fast.
 - **Motion rules.** It can be paused, stops for reduced-motion users, and is skipped on phones.
 
@@ -72,7 +68,8 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 | Concentric rings funnel | Evidence trail | Financial dashboard |
 | Grid / list toggle, folder tabs, document cards | Research library | Repository and Files references |
 
-| Polaroid sources, pinned notes, sticky-note style comments | Sources, record and session pages | Files reference, plus real research walls |
+| Polaroid sources, handwritten sticky notes, numbered pins on photos | Sources, record and session pages | Files reference, plus real research walls |
+| "The story so far": the whole chain as plain lists, with tiny photo prints | Every record page | How researchers write up a study |
 
 All of them are small functions in `js/charts.js` and `js/attachments.js` that return HTML.
 

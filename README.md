@@ -41,8 +41,7 @@ More documents:
 | --- | --- | --- |
 | **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
 | **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
-| **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view | UNION ALL view, WHERE / ILIKE |
-| **Flows** | Every insight, decision, finding or recommendation as its own journey: a step-by-step page from observations to decisions, with the sources and notes at each step | Recursive CTE, exclusive arc |
+| **Research library** | Folder tabs for the five evidence types, search, project filter, and a grid or list view. Each record page tells **the story so far**: everything it rests on and everything it led to, with the photos inline. | UNION ALL view, WHERE / ILIKE, recursive CTE |
 | **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
 | **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
@@ -86,7 +85,7 @@ js/db.js                    ALL data access: loadAll(), save functions, statisti
 js/editors.js               every add/edit form
 js/assistant.js             Quick answers
 js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
-js/pages/*.js               one file per page: home, projects, library, trail, flows, sources, sessions, people, database
+js/pages/*.js               one file per page: home, projects, library, trail, sources, sessions, people, database
 js/app.js                   start-up, sidebar, shortcuts, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)

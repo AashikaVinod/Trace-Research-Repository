@@ -90,6 +90,12 @@ const TONES = {
 };
 function statusPill(value) { return pill(value, TONES[value] || 'grey'); }
 
+// A short archive ID for a record, e.g. OBS-04 or DEC-01 (its primary key).
+const CODE_PREFIX = { observation: 'OBS', finding: 'FND', insight: 'INS', recommendation: 'REC', design_decision: 'DEC', research_session: 'SES' };
+function recordCode(type, id) {
+  return `<span class="code">${CODE_PREFIX[type]}-${String(id).padStart(2, '0')}</span>`;
+}
+
 // A quiet line of details, e.g. meta('Project', '2 sessions').
 // The dots between items come from CSS; empty parts are skipped.
 function meta(...parts) {

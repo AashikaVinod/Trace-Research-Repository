@@ -172,21 +172,18 @@ await step('add a note to the decision', async () => {
   await page.locator('.notes', { hasText: `Agreed in review ${RUN}.` }).waitFor();
 });
 
-await step('the flow of the new insight is complete and shows the photo', async () => {
-  await open('/flows');
-  const card = page.locator('.flow-card', { hasText: `Insight ${RUN}` });
-  await card.waitFor();
-  check(await card.locator('text=Complete').count() === 1, 'flow marked complete');
-  check(await card.locator('.thumbs img').count() >= 1, 'source thumbnail on the card');
-  await card.click();
-  await page.waitForSelector('.journey');
-  check(await page.locator('.journey-item').count() === 5, `five steps, got ${await page.locator('.journey-item').count()}`);
-  check(await page.locator('.journey-item.is-focus', { hasText: `Insight ${RUN}` }).count() === 1, 'the insight is highlighted');
-  await page.locator('.polaroid', { hasText: `Whiteboard ${RUN}` }).waitFor();
-  await page.getByRole('link', { name: 'Open record' }).click();
+await step('the decision page tells the whole story, including the photo', async () => {
+  const story = page.locator('#story');
+  await story.waitFor();
+  for (const label of ['Observation', 'Finding', 'Insight', 'Recommendation']) {
+    check(await story.locator('a', { hasText: `${label} ${RUN}` }).count() === 1, `${label} listed in the story`);
+  }
+  check(await story.locator('.is-this', { hasText: `Decision ${RUN}` }).count() === 1, 'this decision is marked');
+  check(await story.locator('.story-photo').count() >= 1, 'the whiteboard photo appears in the story');
+  await story.locator('a', { hasText: `Insight ${RUN}` }).click();
   await page.waitForSelector(`h1:has-text("Insight ${RUN}")`);
-  await page.goto(page.url().replace(/#.*/, `#/library?q=Decision ${RUN}`));
-  await page.locator('.doc').first().click();
+  await page.goBack();
+  await page.waitForSelector(`h1:has-text("Decision ${RUN}")`);
 });
 
 await step('evidence trail shows the complete story with lines', async () => {

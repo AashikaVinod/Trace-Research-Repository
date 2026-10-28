@@ -582,18 +582,6 @@ function projectOfSource(source) {
   return record ? record.project_id : null;
 }
 
-// Every source along a record's whole journey, plus the sessions its observations came from.
-function journeySources(type, id) {
-  const trail = lineage(type, id);
-  const found = [];
-  for (const stage of STAGES) {
-    for (const record of trail.byStage[stage.type]) found.push(...sourcesFor(stage.type, record.id));
-  }
-  const sessionIds = new Set(trail.byStage.observation.map((o) => o.session_id));
-  for (const sessionId of sessionIds) found.push(...sourcesFor('research_session', sessionId));
-  return [...new Map(found.map((s) => [s.id, s])).values()];
-}
-
 // Attaches a new source (or updates one). `attach` is "type:id", e.g. "finding:3".
 function saveSource(id, values) {
   const row = pick('source', values);

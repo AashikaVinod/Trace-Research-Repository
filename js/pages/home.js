@@ -54,14 +54,14 @@ function pageHome() {
           <p class="up-title">${esc(upNext.title)}</p>
           <p class="card-sub">${esc(byId("research_method", upNext.method_id).name)}, ${esc(byId("research_project", upNext.project_id).title)}</p>
           <p class="up-when">${icon('calendar-days', 15)} ${formatDate(upNext.session_date)} <span>${daysUntil(upNext.session_date)}</span></p>
-          <a class="btn btn-green" href="#/sessions/${upNext.id}">${icon('play', 15)} Open session</a>`
+          <a class="btn btn-accent" href="#/sessions/${upNext.id}">${icon('play', 15)} Open session</a>`
         : `<p class="quiet">No sessions planned. <a class="text-link" href="#/sessions">Plan one</a></p>`}
       </section>
 
       <section class="card">
         <div class="card-top"><h3>Evidence in use</h3></div>
         ${gauge(evidenceInUsePercent(), 'feeds the next step')}
-        <ul class="legend legend-row"><li><i style="background:var(--green)"></i>Used</li><li><i class="hatch-swatch"></i>Waiting</li></ul>
+        <ul class="legend legend-row"><li><i style="background:var(--accent)"></i>Used</li><li><i class="hatch-swatch"></i>Waiting</li></ul>
       </section>
 
       <section class="card span-2">
@@ -121,7 +121,7 @@ select title, observations from v_decision_strength order by observations desc l
 function statCard(href, label, value, recent, months) {
   return `<a class="card stat-card" href="${href}">
     <div class="stat-top"><span>${label}</span><span class="round-link">${icon('arrow-up-right', 16)}</span></div>
-    <div class="stat-mid"><strong>${value}</strong>${sparkline(months.map((m) => m.count), 'var(--green)')}</div>
+    <div class="stat-mid"><strong>${value}</strong>${sparkline(months.map((m) => m.count), 'var(--accent)')}</div>
     ${deltaBadge(recent, 'latest month')}
   </a>`;
 }
