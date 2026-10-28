@@ -53,36 +53,45 @@
       return total;
     }
 
+    // Two clean colour ramps from the TRACE palette. Each part of the liquid
+    // uses one ramp, so colours only blend with their neighbours (no mud).
+    vec3 warm(float x) { // black -> violet -> pink -> orange -> gold
+      vec3 c = mix(vec3(0.03, 0.01, 0.07), vec3(0.42, 0.18, 1.00), smoothstep(0.00, 0.30, x));
+      c = mix(c, vec3(1.00, 0.28, 0.70), smoothstep(0.30, 0.55, x));
+      c = mix(c, vec3(1.00, 0.55, 0.18), smoothstep(0.55, 0.78, x));
+      return mix(c, vec3(1.00, 0.90, 0.55), smoothstep(0.80, 1.00, x));
+    }
+    vec3 cool(float x) { // black -> navy -> blue -> cyan -> mint
+      vec3 c = mix(vec3(0.01, 0.02, 0.07), vec3(0.08, 0.20, 0.85), smoothstep(0.00, 0.30, x));
+      c = mix(c, vec3(0.15, 0.55, 1.00), smoothstep(0.30, 0.55, x));
+      c = mix(c, vec3(0.10, 0.90, 0.85), smoothstep(0.55, 0.78, x));
+      return mix(c, vec3(0.75, 1.00, 0.80), smoothstep(0.80, 1.00, x));
+    }
+
     void main() {
-      vec2 uv = gl_FragCoord.xy / size.y * 2.4;
-      uv.x *= 0.7;                      // stretch sideways, so swirls look like flowing streaks
-      float t = time * 0.035;
+      vec2 uv = gl_FragCoord.xy / size.y * 1.15;  // small number = big swirls
+      uv.x *= 0.8;
+      float t = time * 0.03;
 
       // Domain warping: the noise is used to bend the noise, twice.
       vec2 q = vec2(layers(uv + vec2(0.0, t)), layers(uv + vec2(5.2, 1.3) - t));
-      vec2 r = vec2(layers(uv + 5.0 * q + vec2(1.7, 9.2) + 0.7 * t),
-                    layers(uv + 5.0 * q + vec2(8.3, 2.8) - 0.6 * t));
-      float f = layers(uv + 5.0 * r);
+      vec2 r = vec2(layers(uv + 4.0 * q + vec2(1.7, 9.2) + 0.7 * t),
+                    layers(uv + 4.0 * q + vec2(8.3, 2.8) - 0.6 * t));
+      float f = layers(uv + 4.0 * r);
 
-      // How much "ink" is here: mostly dark, with bright wisps.
-      float ink = pow(f, 3.8) * 6.0;
-      float wisps = pow(layers(uv * 2.6 + 6.0 * r), 5.0) * 3.0; // fine filaments
+      // Brightness along the ramp: dark valleys, bright ridges, a little fine detail.
+      float detail = layers(uv * 3.0 + 3.0 * r);
+      float x = clamp(pow(f, 2.4) * 2.4 + (detail - 0.5) * 0.25, 0.0, 0.9);
 
-      // Which TRACE colour this part of the liquid is (changes slowly across the screen).
-      vec3 tint = mix(vec3(0.48, 0.30, 1.00), vec3(0.10, 0.42, 1.00), smoothstep(0.35, 0.65, q.x)); // violet -> blue
-      tint = mix(tint, vec3(0.05, 0.82, 0.55), smoothstep(0.55, 0.80, r.y) * 0.75);                  // green
-      tint = mix(tint, vec3(1.00, 0.48, 0.14), smoothstep(0.52, 0.78, r.x));                          // orange
-      tint = mix(tint, vec3(1.00, 0.30, 0.64), smoothstep(0.60, 0.85, q.y) * 0.85);                   // pink
+      // Big regions are warm or cool, with a narrow blend between them.
+      float side = smoothstep(0.42, 0.58, q.x + 0.25 * (r.y - 0.5));
+      vec3 color = mix(warm(x), cool(x), side);
 
-      vec3 color = vec3(0.012, 0.010, 0.022) + tint * (ink + wisps * ink * 0.8);
-
-      // A soft glow that drifts around, like light under the liquid.
+      // A soft light that drifts around underneath.
       vec2 p = gl_FragCoord.xy / size - 0.5;
       p.x *= size.x / size.y;
-      vec2 centre = vec2(0.45 * sin(time * 0.05), 0.28 * cos(time * 0.037));
-      color *= 0.22 + 1.7 * exp(-dot(p - centre, p - centre) * 2.0);
-
-      color = 1.0 - exp(-color * 1.4); // tone-map: bright parts glow instead of turning white
+      vec2 centre = vec2(0.42 * sin(time * 0.05), 0.26 * cos(time * 0.037));
+      color *= 0.5 + 0.8 * exp(-dot(p - centre, p - centre) * 2.0);
       gl_FragColor = vec4(color, 1.0);
     }`;
 

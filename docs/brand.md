@@ -53,7 +53,7 @@ Use the **fill** colour for shapes, bars and dots, and the **text** colour for s
 
 ## Background and glass
 
-- **Liquid.** A WebGL shader (`js/background.js`) draws dark, dense, slowly flowing liquid. It feeds noise back into itself ("domain warping") to make the swirls. The colours are the evidence spectrum (violet, blue, green, orange, pink) glowing out of near-black, with a soft light that drifts underneath. `assets/liquid.webp` is a still frame, used when WebGL isn't available.
+- **Liquid.** A WebGL shader (`js/background.js`) draws big, slowly flowing swirls. It feeds noise back into itself ("domain warping") to make them. Colour comes from two clean ramps so hues never turn muddy: **warm** (black → violet → pink → orange → gold) and **cool** (black → navy → blue → cyan → mint). Each large region uses one ramp, with dark folds between swirls and a soft light drifting underneath. `assets/liquid.webp` is a still frame, used when WebGL isn't available.
 - **Glass.** The app window is `rgba(248, 247, 243, 0.9)`, so a faint tint of the liquid shows through. Cards are `rgba(255, 255, 255, 0.92)` with a faint border. There is no live blur, which keeps it fast.
 - **Motion rules.** It can be paused, stops for reduced-motion users, and is skipped on phones.
 
