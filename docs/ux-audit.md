@@ -54,6 +54,10 @@ The design stays exactly as it was (Bricolage Grotesque + Onest, amber liquid, g
 | Quick answers (chat-style panel) and its optional AI server function | It repeated information already shown on the pages, and it was the most AI-looking part of the app |
 | Grid / list toggle in the Research library | Two ways to show the same records; the grid stays |
 | Keyboard-shortcuts button and help dialog | Rarely used; `/` (search), `N` (new) and `Esc` still work |
+| The Flows page | The Evidence trail and each record page already show the whole chain |
+| "Research rhythm" dot timeline (dashboard and Sessions) | It repeated the sessions-per-month chart beside it |
+| "Latest insights" on the dashboard | The Research library lists insights, newest first |
+| "Rows per table" chart on the Database page | A side detail; the schema and the query lab cover the database |
 
 ## Human-made polish pass (earlier round)
 

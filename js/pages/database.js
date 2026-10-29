@@ -66,7 +66,6 @@ const CONCEPT_MAP = [
   ['Pinned notes on images', 'Weak entity, ON DELETE CASCADE', 'annotation in sql/07'],
   ['Who wrote a note', 'Foreign key to researcher, ON DELETE RESTRICT', 'note.author_id'],
   ['What a source is attached to', 'CASE and COALESCE in a view', 'v_source_owner'],
-  ['Flows page', 'Recursive CTE + sources found along the lineage', 'trace_lineage, source'],
 ];
 
 // Queries you can run from this page.
@@ -91,8 +90,6 @@ const QUERIES = [
 
 function pageDatabase() {
   setCrumbs(['Database']);
-  const entityRows = TABLES.filter((t) => !JUNCTIONS.some((j) => j[0] === t)).map((t) => ({ label: t, value: data[t].length, color: 'var(--find)' }));
-  const junctionRows = JUNCTIONS.map((j) => ({ label: j[0], value: data[j[0]].length, color: 'var(--obs)' }));
   const totalRows = TABLES.reduce((sum, t) => sum + data[t].length, 0);
 
   let schemaHtml = '';
@@ -126,14 +123,9 @@ function pageDatabase() {
       <div class="schema">${schemaHtml}</div>
     </section>
 
-    <div class="grid-2 row-gap">
-      <section class="card"><div class="card-top"><h3>Junction tables (many-to-many)</h3></div>
+    <section class="card row-gap"><div class="card-top"><h3>Junction tables (many-to-many)</h3></div>
         <ul class="junctions">${JUNCTIONS.map(([name, a, b]) => `<li><code>${a}</code> ${icon('arrow-left', 14)}${icon('arrow-right', 14)} <code>${b}</code><span class="push quiet">${name}</span></li>`).join('')}</ul>
-      </section>
-      <section class="card"><div class="card-top"><h3>Rows per table</h3></div>
-        ${barChart([...entityRows, ...junctionRows].sort((a, b) => b.value - a.value).slice(0, 10))}
-      </section>
-    </div>
+    </section>
 
     <section class="card row-gap">
       <div class="card-top"><h3>Which DBMS concept powers each feature</h3></div>

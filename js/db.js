@@ -512,21 +512,6 @@ function countsByMonth(rows, dateKey, months = 6) {
   return result;
 }
 
-// Sessions per week for the last `weeks` weeks (for the dot timeline).
-function sessionsByWeek(weeks = 16) {
-  const result = [];
-  const end = researchToday().getTime() + 86400000;
-  for (let i = weeks - 1; i >= 0; i--) {
-    const from = end - (i + 1) * 7 * 86400000;
-    const to = end - i * 7 * 86400000;
-    const count = data.research_session.filter((s) => {
-      const time = new Date(s.session_date + 'T00:00').getTime();
-      return time > from && time <= to;
-    }).length;
-    result.push({ label: `Week of ${formatDate(new Date(from + 86400000).toISOString().slice(0, 10))}`, count });
-  }
-  return result;
-}
 
 // Share of evidence (steps 1 to 4) that already feeds the next step.
 function evidenceInUsePercent() {
@@ -582,17 +567,6 @@ function projectOfSource(source) {
   return record ? record.project_id : null;
 }
 
-// Every source along a record's whole journey, plus the sessions its observations came from.
-function journeySources(type, id) {
-  const trail = lineage(type, id);
-  const found = [];
-  for (const stage of STAGES) {
-    for (const record of trail.byStage[stage.type]) found.push(...sourcesFor(stage.type, record.id));
-  }
-  const sessionIds = new Set(trail.byStage.observation.map((o) => o.session_id));
-  for (const sessionId of sessionIds) found.push(...sourcesFor('research_session', sessionId));
-  return [...new Map(found.map((s) => [s.id, s])).values()];
-}
 
 // Attaches a new source (or updates one). `attach` is "type:id", e.g. "finding:3".
 function saveSource(id, values) {

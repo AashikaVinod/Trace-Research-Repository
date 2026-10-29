@@ -41,7 +41,6 @@ More documents:
 | **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
 | **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
 | **Research library** | Folder tabs for the five evidence types, search and project filter | UNION ALL view, WHERE / ILIKE |
-| **Flows** | Every insight, decision, finding or recommendation as its own journey: a step-by-step page from observations to decisions, with the sources and notes at each step | Recursive CTE, exclusive arc |
 | **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
 | **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
 | **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
@@ -82,7 +81,7 @@ js/charts.js                charts and dashboard components (sparklines, gauge, 
 js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
 js/editors.js               every add/edit form
 js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
-js/pages/*.js               one file per page: home, projects, library, trail, flows, sources, sessions, people, database
+js/pages/*.js               one file per page: home, projects, library, trail, sources, sessions, people, database
 js/app.js                   start-up, sidebar, and which page to show for each address
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
 css/tokens.css              brand colours, spacing, type (change the design here)
@@ -161,7 +160,7 @@ Results are recorded in `docs/testing-checklist.md`.
 | Suite | Command | Needs |
 | --- | --- | --- |
 | SQL integrity, security, views (33 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Every user flow in the browser (28 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
+| Every user flow in the browser (27 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
 
 ## Troubleshooting
 

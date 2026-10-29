@@ -3,7 +3,7 @@
 // Row 1  four stat cards (one highlighted), with change badges and sparklines
 // Row 2  research activity, the next session, evidence in use (gauge)
 // Row 3  project progress, how sessions felt, strongest decisions
-// Row 4  the latest decision, activity over 16 weeks, latest insights
+// Row 4  the latest decision and its evidence chain
 // ===================================================================
 
 function pageHome() {
@@ -81,25 +81,13 @@ function pageHome() {
         ${rankList(decisionStrength().slice(0, 4).map((d) => ({ label: d.title, value: d.observations, unit: 'obs', href: `#/trail/design_decision/${d.id}`, note: byId('research_project', d.project_id).title })))}
       </section>
 
-      <article class="card span-2 lead-card">
+      <article class="card span-4 lead-card">
         <div class="card-top"><div><p class="card-sub">Latest decision in ${esc(byId("research_project", lead.project_id).title)}</p></div>${statusPill(lead.status)}</div>
         <h2><a href="#/trail/design_decision/${lead.id}">${esc(lead.title)}</a></h2>
         <p class="muted">${esc(lead.description)}</p>
         <div class="chain-steps">${STAGES.map((s) => `<span class="stage-${s.type}"><b>${story.byStage[s.type].length}</b>${story.byStage[s.type].length === 1 ? s.label : s.plural}</span>`).join('')}</div>
         <a class="text-link" href="#/trail/design_decision/${lead.id}">See the full evidence trail ${icon('arrow-right', 14)}</a>
       </article>
-
-      <section class="card">
-        <div class="card-top"><h3>Research rhythm</h3></div>
-        ${activityDots(sessionsByWeek(16))}
-        <p class="card-sub" style="margin-top:12px">${sessionsByWeek(16).filter((w) => w.count).length} of the last 16 weeks had sessions, up to ${formatDate(researchToday().toISOString().slice(0, 10))}.</p>
-      </section>
-
-      <section class="card">
-        <div class="card-top"><h3>Latest insights</h3><a class="round-link" href="#/library?type=insight" aria-label="All insights">${icon('arrow-up-right', 16)}</a></div>
-        <ul class="mini-list">${[...data.insight].sort((a, b) => (b.created_at > a.created_at ? 1 : -1)).slice(0, 3).map((i) => `
-          <li><a href="#/record/insight/${i.id}"><span class="dot stage-insight"></span><span><strong>${esc(i.title)}</strong><small>${esc(i.impact)} impact</small></span></a></li>`).join('')}</ul>
-      </section>
     </div>
 
     ${dbPanel(['Aggregate functions (COUNT)', 'View', 'GROUP BY month', 'Recursive CTE'], `

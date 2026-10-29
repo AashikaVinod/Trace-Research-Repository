@@ -18,17 +18,6 @@ function barChart(items) {
   return html + '</div>';
 }
 
-// Vertical columns, e.g. sessions per month. items: [{ label, value }]
-function columnChart(items, color = 'var(--find)') {
-  if (items.length === 0) return '<p class="quiet">No data yet.</p>';
-  const largest = Math.max(1, ...items.map((item) => item.value));
-  let html = `<div class="columns" role="img" aria-label="${esc(items.map((i) => `${i.label}: ${i.value}`).join(', '))}">`;
-  for (const item of items) {
-    const height = Math.max(4, Math.round((item.value / largest) * 100));
-    html += `<div class="col"><b>${item.value}</b><div class="col-bar" style="height:${height}%;background:${color}"></div><span>${esc(item.label)}</span></div>`;
-  }
-  return html + '</div>';
-}
 
 // A donut made with a CSS conic-gradient. items: [{ label, value, color }]
 function donutChart(items, centerLabel) {
@@ -143,14 +132,6 @@ function segmentBar(segments) {
   </div>`;
 }
 
-// A row of dots, one per week; filled dots had research activity
-// (from the "13 days" dot timeline in the financial dashboard reference).
-// weeks: [{ label, count }]
-function activityDots(weeks) {
-  return `<div class="dots" role="img" aria-label="${weeks.filter((w) => w.count).length} of ${weeks.length} weeks had sessions">
-    ${weeks.map((w) => `<i class="dot-${Math.min(w.count, 3)}" title="${esc(w.label)}: ${plural(w.count, 'session')}"></i>`).join('')}
-  </div>`;
-}
 
 // Circles inside circles, one per step, evenly spaced, each labelled with
 // its count (from the "annual profits" circles in the financial dashboard).

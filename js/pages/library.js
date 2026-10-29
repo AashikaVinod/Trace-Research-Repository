@@ -137,7 +137,6 @@ function pageRecord(params) {
         <p class="paper-text">${esc(r.description)}</p>
         <div class="actions">
           <button class="btn" id="edit">${icon('pencil', 15)} Edit${prev ? ' and link' : ''}</button>
-          <a class="btn" href="#/flow/${type}/${r.id}">${icon('route', 15)} See its flow</a>
           <a class="btn" href="#/trail/${type}/${r.id}">${icon('waypoints', 15)} See its evidence trail</a>
         </div>
       </article>
