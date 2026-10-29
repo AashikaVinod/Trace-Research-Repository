@@ -63,7 +63,7 @@ The flows covered are:
 | 15 | Dashboard metrics match the database | 🟡 ✅ | Dashboard total equals the project list; seed counts match SQL |
 | 16 | Invalid form data is rejected | ✅ | Short title, short objective, end date before start, bad participant code |
 | 17 | Database errors are communicated clearly | 🟡 ✅ | Duplicate title message, permission message, wrong password message |
-| 18 | Missing or unsafe configuration is handled | 🟡 | Empty config gives sample mode (tested). The checks for half-filled, secret or `service_role` keys (`configProblem()` in `js/db.js`) are not automatically tested. |
+| 18 | Missing or unsafe configuration is handled | 🟡 | The demo has no configuration file (tested by running it with none). The checks for half-filled, secret or `service_role` keys were removed with the Supabase connection, so there is nothing to test until it is reconnected. |
 | 19 | Deployed site loads and assets work | ⬜ | Needs the Vercel URL |
 | 20 | Deployed site performs a real database operation | ⬜ | Needs real Supabase and Vercel |
 

@@ -153,13 +153,19 @@ Sign in through the browser prompt, or with `gh auth login`. Never paste a token
 
 TRACE uses `#/` addresses, so no rewrite rules are needed.
 
+## Supabase: current status
+
+The Supabase database is **not connected yet**. The app saves to the browser, and the SQL files in `sql/` are tested but not installed in a live project. Connecting it needs the app's save functions in `js/db.js` rewritten to talk to Supabase, and the schema installed in order (`sql/01` to `sql/08`). Until then, nothing you add reaches a server, and the deployed site only shows the demo study.
+
+Once it is connected, the steps are: create a project at <https://supabase.com>, run the SQL files in order in the SQL Editor, add your user to `trace_editor`, put the project URL and **publishable** key into the app, and add the Supabase domain to `connect-src` in `vercel.json`. Never use the `service_role` key in the browser.
+
 ## Testing
 
 Results are recorded in `docs/testing-checklist.md`.
 
 | Suite | Command | Needs |
 | --- | --- | --- |
-| SQL integrity, security, views (33 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
+| SQL integrity, security, views, sources (40 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
 | Every user flow in the browser (27 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
 
 ## Troubleshooting
