@@ -1,10 +1,11 @@
-// Browser test of every TRACE flow (the demo runs in sample mode).
+// Browser test of every TRACE flow, against a database (PostgreSQL behind
+// PostgREST) and a Storage mock, exactly as the app talks to Supabase.
 // Setup once:  npm install --no-save playwright && npx playwright install chromium
-// Run:         node tests/serve.mjs 8080   (in another terminal)
-//              BASE=http://localhost:8080 node tests/e2e.mjs
+// Run:         POSTGREST_BIN=/path/to/postgrest ./tests/supabase-local/run-e2e.sh
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE || 'http://localhost:8080';
+const BASE = process.env.BASE || 'http://localhost:8090';
+const STORAGE = 'http://localhost:54321'; // the local gateway; /__storage lists the photos the app uploaded
 const RUN = Date.now().toString(36).slice(-4);
 let passed = 0;
 let failed = 0;
@@ -14,7 +15,8 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 page.setDefaultTimeout(7000);
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+// 400 and 409 are the deliberate refusals (duplicate title, "still in use").
+page.on('console', (m) => { if (m.type() === 'error' && !/status of (400|409)/.test(m.text())) errors.push(m.text()); });
 
 async function step(name, fn) {
   try { await fn(); passed++; console.log('PASS', name); }
@@ -37,7 +39,7 @@ const toastSays = (text) => page.locator('.toast', { hasText: text }).first().wa
 const project = `Demo project ${RUN}`;
 
 // ---------- Start ----------
-await step('opens with the sample study, the logo and totals', async () => {
+await step('opens with the study loaded from the database, the logo and totals', async () => {
   await open('/');
   check(await page.locator('.brand img').isVisible(), 'logo');
   check(Number(await page.locator('.stat-card strong').first().textContent()) >= 4, 'project total');
@@ -134,10 +136,13 @@ await step('record and edit an observation', async () => {
 
 await step('attach a photo to the observation and pin a note on it', async () => {
   await page.locator('[data-add-source]').first().click();
-  await modal().locator('#f-file').setInputFiles(new URL('../assets/sources/library-mind-map.webp', import.meta.url).pathname);
+  await modal().locator('#f-file').setInputFiles(new URL('../assets/sources/banking-affinity-map.webp', import.meta.url).pathname);
   await fill('Title', `Whiteboard ${RUN}`);
   await save();
   await page.locator('#viewer-image').waitFor();                       // the viewer opens on the new source
+  await page.waitForFunction(() => { const i = document.querySelector('#viewer-image img'); return i && i.complete && i.naturalWidth > 0; });
+  const stored = await (await fetch(`${STORAGE}/__storage`)).json();
+  check(stored.length === 1 && stored[0].includes('whiteboard'), `the photo is in Storage, got ${JSON.stringify(stored)}`);
   const box = await page.locator('#viewer-image').boundingBox();
   await page.locator('#viewer-image').click({ position: { x: box.width * 0.4, y: box.height * 0.4 } });
   await page.locator('#pin-body').fill('This cluster is the key moment.');
@@ -253,6 +258,7 @@ await step('sources library: folders and kinds filter the photos', async () => {
   await page.locator('[data-kind=""]').click();
   await page.locator('.folder-card', { hasText: 'Library catalogue search' }).click();
   check(await page.locator('.polaroid').count() === 2, 'library project has 2 sources');
+  await page.waitForFunction(() => { const i = document.querySelector('.polaroid img'); return i && i.complete && i.naturalWidth > 0; });
 });
 
 // ---------- Safety nets ----------
@@ -285,6 +291,49 @@ await step('archive, undo, archive again, then restore', async () => {
   await page.locator('#archive').click();
   await modal().locator('#confirm-ok').click();
   await toastSays('Project restored.');
+});
+
+// ---------- Deleting ----------
+await step('deleting is refused while other records still depend on it', async () => {
+  await open('/sessions');
+  await page.locator('a', { hasText: `Usability test ${RUN}` }).first().click();
+  await page.waitForSelector(`h1:has-text("Usability test ${RUN}")`);
+  await page.locator('#edit').click();
+  await modal().locator('[data-delete]').click();
+  await modal().locator('#confirm-ok').click();
+  const alert = modal().locator('.form-alert:not([hidden])');
+  await alert.waitFor();
+  check(/can't be deleted yet: observations/.test(await alert.textContent()), `message was: ${await alert.textContent()}`);
+  await page.keyboard.press('Escape');
+});
+
+await step('delete a decision from its edit dialog: it leaves the library and the trail', async () => {
+  await open(`/library?q=Decision ${RUN}`);
+  await page.locator('.doc').first().click();
+  await page.locator('#edit').click();
+  await modal().locator('[data-delete]').click();
+  await modal().locator('#confirm-ok').click();
+  await toastSays('Decision deleted.');
+  await open(`/library?q=Decision ${RUN}`);
+  check(await page.locator('.doc').count() === 0, 'the decision is gone');
+  await open(`/trail?q=1`);
+  await page.goto(`${BASE}/#/library?q=Recommendation ${RUN}`);
+  await page.locator('.doc').first().click();
+  await page.waitForSelector(`h1:has-text("Recommendation ${RUN}")`);
+  await page.getByRole('link', { name: 'See its evidence trail' }).click();
+  await page.waitForSelector('.trail-card.is-focus');
+  check(await page.locator('.trail-card', { hasText: `Decision ${RUN}` }).count() === 0, 'no decision left in the trail');
+});
+
+await step('delete the photo: its row and its file in Storage both go', async () => {
+  await open('/sources');
+  await page.locator('.polaroid', { hasText: `Whiteboard ${RUN}` }).click();
+  await page.locator('#edit-source').click();
+  await modal().locator('[data-delete]').click();
+  await modal().locator('#confirm-ok').click();
+  await toastSays('Source deleted.');
+  await page.locator('.polaroid', { hasText: `Whiteboard ${RUN}` }).waitFor({ state: 'detached' });
+  check((await (await fetch(`${STORAGE}/__storage`)).json()).length === 0, 'the file left Storage');
 });
 
 // ---------- Assistant and database ----------

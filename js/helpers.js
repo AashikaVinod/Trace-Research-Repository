@@ -204,7 +204,7 @@ function confirmBox(title, text, okLabel = 'Confirm') {
 //       | file (an image picker; the value is the chosen File)
 // options: a list, or a function (current values) => list, which lets a
 // field change when another field changes (see dependsOn).
-function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) {
+function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave, onDelete = null, deleteLabel = 'entry' }) {
   return new Promise((resolve) => {
     let saved = null;
     let startingValues = '';
@@ -258,9 +258,10 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       </div>`;
     }
 
+    let finished = false; // true after a delete, so closing needs no "discard changes" question
     // Ask before throwing away changes (an HCI "error prevention" rule).
     async function canClose() {
-      if (saved || JSON.stringify(readValues()) === startingValues) return true;
+      if (saved || finished || JSON.stringify(readValues()) === startingValues) return true;
       return confirmBox('Discard your changes?', 'You have changes in this form that are not saved yet.', 'Discard');
     }
 
@@ -269,6 +270,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       wide: fields.some((field) => field.type === 'checkboxes'),
       body: `<form id="the-form" class="form" novalidate>${allFields.map(fieldHtml).join('')}</form>`,
       footer: `<p class="form-alert" role="alert" hidden></p>
+        ${onDelete ? '<button class="btn btn-danger" type="button" data-delete>Delete</button>' : ''}
         <button class="btn" type="button" data-close>Cancel</button>
         <button class="btn btn-dark" type="submit" form="the-form">${esc(submitLabel)}</button>`,
       onClose: () => resolve(saved),
@@ -372,14 +374,29 @@ function openForm({ title, fields, values = {}, submitLabel = 'Save', onSave }) 
       }
     });
 
+    if (onDelete) {
+      $('[data-delete]', dialog).onclick = async () => {
+        const ok = await confirmBox(`Delete this ${deleteLabel}?`, 'This cannot be undone.', 'Delete');
+        if (!ok) return;
+        try {
+          await onDelete();
+          finished = true;
+          close();
+        } catch (error) {
+          const alertBox = $('.form-alert', dialog);
+          alertBox.textContent = error.message;
+          alertBox.hidden = false;
+        }
+      };
+    }
+
     const first = $('.input:not([disabled])', form);
     if (first) first.focus();
   });
 }
 
 
-// Shrinks a photo before it's stored (browsers only keep a few MB), and
-// returns it as a "data URL" string that can be saved like any text.
+// Shrinks a photo before it is uploaded and returns it as a JPEG Blob.
 function readImage(file, maxSize = 1400) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) { reject(new Error('Choose an image file (JPG, PNG or WebP).')); return; }
@@ -394,7 +411,7 @@ function readImage(file, maxSize = 1400) {
         canvas.width = Math.round(image.width * scale);
         canvas.height = Math.round(image.height * scale);
         canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("That image couldn't be prepared."))), 'image/jpeg', 0.82);
       };
       image.src = reader.result;
     };

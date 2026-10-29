@@ -13,6 +13,12 @@ function words(list) {
   return list.map((word) => ({ value: word, label: capital(word) }));
 }
 
+// After deleting something: show a page that still exists.
+function afterDelete(message, path = '') {
+  toast(message);
+  if (path && location.hash !== `#${path}`) go(path); else render();
+}
+
 async function editProject(project = null) {
   const teamIds = project ? data.project_researcher.filter((l) => l.project_id === project.id).map((l) => l.researcher_id) : [];
   const methodIds = project ? data.project_method.filter((l) => l.project_id === project.id).map((l) => l.method_id) : [];
@@ -34,6 +40,8 @@ async function editProject(project = null) {
       { name: 'method_ids', label: 'Methods', type: 'checkboxes', options: options(data.research_method, (m) => m.name) },
     ],
     onSave: (values) => saveProject(project?.id, values),
+    onDelete: project ? async () => { await deleteRecord('research_project', project.id); afterDelete('Project deleted.', '/projects'); } : null,
+    deleteLabel: 'project',
   });
   if (saved) { toast(project ? 'Project saved.' : 'Project created.'); project ? render() : go(`/projects/${saved.id}`); }
 }
@@ -46,12 +54,12 @@ async function toggleArchive(project) {
     archiving ? 'Archive' : 'Restore');
   if (!ok) return;
   try {
-    setArchived(project.id, archiving);
+    await setArchived(project.id, archiving);
     render();
     // Undo gives people a way back (HCI: user control and freedom).
     toast(archiving ? 'Project archived.' : 'Project restored.', 'success', {
       label: 'Undo',
-      run: () => { setArchived(project.id, !archiving); toast('Change undone.'); render(); },
+      run: async () => { await setArchived(project.id, !archiving); toast('Change undone.'); render(); },
     });
   } catch (error) {
     toast(error.message, 'error');
@@ -64,6 +72,8 @@ async function editQuestion(projectId, question = null) {
     values: question || {},
     fields: [{ name: 'question_text', label: 'Question', type: 'textarea', rows: 3, required: true, min: 5 }],
     onSave: (v) => saveSimple('research_question', question?.id, { ...v, project_id: projectId }),
+    onDelete: question ? async () => { await deleteRecord('research_question', question.id); afterDelete('Question deleted.'); } : null,
+    deleteLabel: 'question',
   });
   if (saved) { toast('Question saved.'); render(); }
 }
@@ -95,6 +105,8 @@ async function editSession(session = null, projectId = null) {
       { name: 'notes', label: 'Notes', type: 'textarea', rows: 2 },
     ],
     onSave: (v) => saveSession(session?.id, session ? { ...v, project_id: session.project_id } : v),
+    onDelete: session ? async () => { await deleteRecord('research_session', session.id); afterDelete('Session deleted.', '/sessions'); } : null,
+    deleteLabel: 'session',
   });
   if (saved) { toast(session ? 'Session saved.' : 'Session created.'); session ? render() : go(`/sessions/${saved.id}`); }
 }
@@ -113,6 +125,8 @@ async function editParticipant(participant = null) {
       { name: 'notes', label: 'Notes', type: 'textarea', rows: 2, help: 'Practical notes only. Never enter names or contact details.' },
     ],
     onSave: (v) => saveParticipant(participant?.id, v),
+    onDelete: participant ? async () => { await deleteRecord('participant', participant.id); afterDelete('Participant deleted.'); } : null,
+    deleteLabel: 'participant',
   });
   if (saved) { toast('Participant saved.'); render(); }
 }
@@ -168,6 +182,8 @@ async function editRecord(type, record = null, preset = {}) {
     values,
     fields,
     onSave: (v) => saveRecord(type, record?.id, v, prev ? v.up_ids : undefined),
+    onDelete: record ? async () => { await deleteRecord(type, record.id); afterDelete(`${stage.label} deleted.`, `/library?type=${type}`); } : null,
+    deleteLabel: stage.label.toLowerCase(),
   });
   if (saved) { toast(`${stage.label} saved.`); record ? render() : go(`/record/${type}/${saved.id}`); }
 }
@@ -186,6 +202,8 @@ async function editSimple(table, row = null) {
     values: row || {},
     fields: setup.fields,
     onSave: (v) => saveSimple(table, row?.id, v),
+    onDelete: row ? async () => { await deleteRecord(table, row.id); afterDelete('Deleted.'); } : null,
+    deleteLabel: setup.noun,
   });
   if (saved) { toast('Saved.'); render(); }
 }

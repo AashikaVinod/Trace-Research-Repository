@@ -9,7 +9,7 @@ const SOURCE_KINDS = ['photo', 'whiteboard', 'sketch', 'notes', 'document', 'scr
 function polaroid(source) {
   const tilt = ((source.id % 5) - 2) * 0.7; // a slightly different angle each, like prints on a desk
   return `<button class="polaroid" data-open-source="${source.id}" style="--tilt:${tilt}deg">
-    <img src="${esc(source.file_url)}" alt="" loading="lazy">
+    <img src="${esc(sourceUrl(source))}" alt="" loading="lazy">
     <span class="polaroid-title">${esc(source.title)}</span>
     <span class="polaroid-meta">${esc(capital(source.kind))}${pinsFor(source.id).length ? `, ${plural(pinsFor(source.id).length, 'pin')}` : ''}</span>
   </button>`;
@@ -59,8 +59,15 @@ document.addEventListener('click', (event) => {
   if (add) editSource(null, add.dataset.addSource);
   const remove = event.target.closest('[data-delete-note]');
   if (remove) {
-    confirmBox('Delete this note?', 'The note will be removed for everyone.', 'Delete').then((ok) => {
-      if (ok) { deleteRow('note', Number(remove.dataset.deleteNote)); toast('Note deleted.'); render(); }
+    confirmBox('Delete this note?', 'This cannot be undone.', 'Delete').then(async (ok) => {
+      if (!ok) return;
+      try {
+        await deleteRecord('note', Number(remove.dataset.deleteNote));
+        toast('Note deleted.');
+        render();
+      } catch (error) {
+        toast(error.message, 'error');
+      }
     });
   }
 });
@@ -68,15 +75,20 @@ document.addEventListener('click', (event) => {
 // Wires up the note forms inside `root` (call after drawing a page).
 function hookAttachments(root) {
   for (const form of $$('[data-note-form]', root)) {
-    form.onsubmit = (event) => {
+    form.onsubmit = async (event) => {
       event.preventDefault();
       const [type, id] = form.dataset.noteForm.split(':');
       const body = $('textarea', form).value.trim();
       const error = $('.error', form);
       if (body.length < 2) { error.textContent = 'Write a note first.'; error.hidden = false; $('textarea', form).focus(); return; }
-      saveNote(type, Number(id), { body, author_id: Number($('select', form).value) });
-      toast('Note added.');
-      render();
+      try {
+        await saveNote(type, Number(id), { body, author_id: Number($('select', form).value) });
+        toast('Note added.');
+        render();
+      } catch (problem) {
+        error.textContent = problem.message;
+        error.hidden = false;
+      }
     };
   }
 }
@@ -95,7 +107,7 @@ function attachOptions() {
   return list;
 }
 
-// Add a source (photo upload) or edit its details.
+// Add a source (a photo upload) or edit its details.
 async function editSource(source = null, attachTo = '') {
   const owner = source ? ownerOf(source) : null;
   const saved = await openForm({
@@ -104,7 +116,7 @@ async function editSource(source = null, attachTo = '') {
     values: source ? { ...source, attach: `${owner.type}:${owner.id}` } : { kind: 'whiteboard', attach: attachTo || null },
     fields: [
       { type: 'section', label: 'The file' },
-      ...(source ? [] : [{ name: 'file', label: 'Photo or scan', type: 'file', required: true, help: 'A photo of a whiteboard, a sketch, notes or a screenshot. It is resized before saving.' }]),
+      ...(source ? [] : [{ name: 'file', label: 'Photo or scan', type: 'file', required: true, help: 'A photo of a whiteboard, a sketch, notes or a screenshot. It is resized, then uploaded to your Supabase storage.' }]),
       { name: 'title', label: 'Title', required: true, min: 3 },
       { name: 'kind', label: 'Kind', type: 'select', required: true, options: words(SOURCE_KINDS) },
       { name: 'caption', label: 'Caption', type: 'textarea', rows: 2, help: 'What does it show, and why does it matter?' },
@@ -112,9 +124,20 @@ async function editSource(source = null, attachTo = '') {
       { name: 'attach', label: 'Attach to', type: 'select', required: true, options: attachOptions() },
     ],
     onSave: async (values) => {
-      if (values.file) values.file_url = await readImage(values.file);
-      return saveSource(source ? source.id : null, values);
+      let uploaded = null;
+      if (values.file) {
+        uploaded = await uploadPhoto(await readImage(values.file), values.title);
+        values.file_url = uploaded;
+      }
+      try {
+        return await saveSource(source ? source.id : null, values);
+      } catch (error) {
+        if (uploaded) await removeFiles([uploaded]); // don't leave an orphan file behind
+        throw error;
+      }
     },
+    onDelete: source ? async () => { await deleteRecord('source', source.id); toast('Source deleted.'); render(); } : null,
+    deleteLabel: 'source',
   });
   if (saved) { toast(source ? 'Source saved.' : 'Source added.'); render(); if (!source && saved.id) openSourceViewer(saved.id); }
 }
@@ -122,7 +145,7 @@ async function editSource(source = null, attachTo = '') {
 // The viewer: the image with numbered pins, and the notes beside it.
 // Click anywhere on the image to pin a new note there.
 function openSourceViewer(sourceId) {
-  const { dialog } = openModal({ title: byId('source', sourceId).title, wide: true, body: '<div id="viewer"></div>' });
+  const { dialog, close } = openModal({ title: byId('source', sourceId).title, wide: true, body: '<div id="viewer"></div>' });
   dialog.classList.add('modal-viewer');
   let draft = null; // where a new pin is being placed
 
@@ -132,7 +155,7 @@ function openSourceViewer(sourceId) {
     const pins = pinsFor(sourceId);
     $('#viewer', dialog).innerHTML = `<div class="viewer">
       <div class="viewer-image" id="viewer-image" title="Click to pin a note">
-        <img src="${esc(source.file_url)}" alt="${esc(source.caption || source.title)}">
+        <img src="${esc(sourceUrl(source))}" alt="${esc(source.caption || source.title)}">
         ${pins.map((p, i) => `<span class="pin" style="left:${p.x * 100}%;top:${p.y * 100}%" data-pin-index="${i + 1}">${i + 1}</span>`).join('')}
         ${draft ? `<span class="pin pin-draft" style="left:${draft.x * 100}%;top:${draft.y * 100}%">+</span>` : ''}
       </div>
@@ -168,21 +191,33 @@ function openSourceViewer(sourceId) {
     };
     if ($('#pin-form', dialog)) {
       $('#pin-cancel', dialog).onclick = () => { draft = null; draw(); };
-      $('#pin-form', dialog).onsubmit = (event) => {
+      $('#pin-form', dialog).onsubmit = async (event) => {
         event.preventDefault();
         const body = $('#pin-body', dialog).value.trim();
         if (body.length < 2) { $('#pin-body', dialog).focus(); return; }
-        savePin(sourceId, { x: Number(draft.x.toFixed(4)), y: Number(draft.y.toFixed(4)), body, author_id: Number($('#pin-author', dialog).value) });
-        draft = null;
-        toast('Note pinned.');
-        draw();
-        render();
+        try {
+          await savePin(sourceId, { x: Number(draft.x.toFixed(4)), y: Number(draft.y.toFixed(4)), body, author_id: Number($('#pin-author', dialog).value) });
+          draft = null;
+          toast('Note pinned.');
+          draw();
+          render();
+        } catch (error) {
+          toast(error.message, 'error');
+        }
       };
     }
     $$('[data-delete-pin]', dialog).forEach((button) => {
-      button.onclick = () => { deleteRow('annotation', Number(button.dataset.deletePin)); draw(); render(); };
+      button.onclick = async () => {
+        try {
+          await deleteRecord('annotation', Number(button.dataset.deletePin));
+          draw();
+          render();
+        } catch (error) {
+          toast(error.message, 'error');
+        }
+      };
     });
-    $('#edit-source', dialog).onclick = () => editSource(byId('source', sourceId));
+    $('#edit-source', dialog).onclick = () => editSource(byId('source', sourceId)).then(() => (byId('source', sourceId) ? draw() : close()));
   }
   draw();
 }

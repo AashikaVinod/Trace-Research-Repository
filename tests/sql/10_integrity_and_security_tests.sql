@@ -1,5 +1,5 @@
 -- LOCAL TESTING ONLY. Validates constraints, triggers and RLS after
--- running tests/sql/00_supabase_local_stubs.sql and sql/01..04.
+-- running tests/sql/00_supabase_local_stubs.sql and sql/01..09 (with the full demo data).
 -- Every test runs inside a transaction that is rolled back.
 \set ON_ERROR_STOP on
 begin;
@@ -38,15 +38,6 @@ begin
 exception when others then
   raise exception 'FAIL  %: % %', label, sqlstate, sqlerrm;
 end $$;
-
--- Test users: one editor, one signed-in non-editor.
-insert into auth.users (id, email) values
-  ('00000000-0000-0000-0000-0000000000e1', 'editor@example.org'),
-  ('00000000-0000-0000-0000-0000000000a1', 'viewer@example.org');
-insert into public.trace_editor (user_id) values ('00000000-0000-0000-0000-0000000000e1');
-
-\set editor '\'{"sub":"00000000-0000-0000-0000-0000000000e1","role":"authenticated"}\''
-\set viewer '\'{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}\''
 
 -- ---- Integrity (as table owner) ------------------------------------
 select pg_temp.expect_error('FK: observation needs a real session', 'postgres', null,
@@ -88,44 +79,28 @@ begin
   else raise exception 'FAIL  updated_at did not change'; end if;
 end $$;
 
--- ---- Row Level Security ----------------------------------------------
-select pg_temp.expect_ok('RLS: visitors can read projects', 'anon', null,
+-- ---- Open access: the app uses the public (anon) role for everything ------
+select pg_temp.expect_ok('ACCESS: the app can read projects', 'anon', null,
   $q$select count(*) from public.research_project$q$);
-select pg_temp.expect_error('RLS: visitors cannot create projects', 'anon', null,
-  $q$insert into public.research_project (title, research_objective, start_date) values ('Anon project', 'Objective long enough', '2026-01-01')$q$, '42501');
-select pg_temp.expect_error('RLS: visitors cannot read the editor list', 'anon', null,
-  $q$select * from public.trace_editor$q$, '42501');
-select pg_temp.expect_error('RLS: signed-in non-editors cannot create projects', 'authenticated', :viewer,
-  $q$insert into public.research_project (title, research_objective, start_date) values ('Viewer project', 'Objective long enough', '2026-01-01')$q$, '42501');
-select pg_temp.expect_error('RLS: signed-in non-editors cannot link evidence', 'authenticated', :viewer,
-  $q$insert into public.observation_finding (observation_id, finding_id) values (2, 1)$q$, '42501');
-select pg_temp.expect_ok('RLS: editors can create projects (identity id without sequence grant)', 'authenticated', :editor,
-  $q$insert into public.research_project (title, research_objective, start_date) values ('Editor project', 'Objective long enough', '2026-01-01')$q$);
-select pg_temp.expect_ok('RLS: editors can update and archive projects', 'authenticated', :editor,
-  $q$update public.research_project set archived_at = now() where title = 'Editor project'$q$);
-select pg_temp.expect_ok('RLS: editors can link evidence', 'authenticated', :editor,
+select pg_temp.expect_ok('ACCESS: the app can create projects (identity id works without a sequence grant)', 'anon', null,
+  $q$insert into public.research_project (title, research_objective, start_date) values ('App project', 'Objective long enough', '2026-01-01')$q$);
+select pg_temp.expect_ok('ACCESS: the app can edit and archive projects', 'anon', null,
+  $q$update public.research_project set archived_at = now() where title = 'App project'$q$);
+select pg_temp.expect_ok('ACCESS: the app can link evidence', 'anon', null,
   $q$insert into public.observation_finding (observation_id, finding_id) values (2, 1)$q$);
-select pg_temp.expect_ok('RLS: editors can remove links', 'authenticated', :editor,
+select pg_temp.expect_ok('ACCESS: the app can remove links', 'anon', null,
   $q$delete from public.observation_finding where observation_id = 2 and finding_id = 1$q$);
-select pg_temp.expect_error('GRANT: nobody deletes projects through the API', 'authenticated', :editor,
-  $q$delete from public.research_project where title = 'Editor project'$q$, '42501');
-select pg_temp.expect_error('GRANT: nobody deletes evidence records through the API', 'authenticated', :editor,
-  $q$delete from public.observation where id = 2$q$, '42501');
 
-do $$
-declare n int;
-begin
-  perform set_config('role', 'authenticated', true);
-  perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1"}', true);
-  update public.finding set title = 'Hijacked' where id = 1;
-  get diagnostics n = row_count;
-  perform set_config('role', 'postgres', true);
-  if n = 0 then raise notice 'PASS  RLS: non-editor updates affect zero rows';
-  else raise exception 'FAIL  non-editor updated % rows', n; end if;
-end $$;
+-- ---- Deleting ---------------------------------------------------------------
+select pg_temp.expect_ok('DELETE: an empty project can be deleted', 'anon', null,
+  $q$delete from public.research_project where title = 'App project'$q$);
+select pg_temp.expect_error('DELETE: a project with records is protected (RESTRICT)', 'anon', null,
+  $q$delete from public.research_project where id = 1$q$, '23503');
+select pg_temp.expect_error('DELETE: a session with observations is protected (RESTRICT)', 'anon', null,
+  $q$delete from public.research_session where id = 1$q$, '23503');
+select pg_temp.expect_error('DELETE: a researcher who wrote notes is protected (RESTRICT)', 'anon', null,
+  $q$delete from public.researcher where id in (select author_id from public.note limit 1)$q$, '23503');
 
-select pg_temp.expect_ok('RPC: trace_is_editor is callable by visitors', 'anon', null,
-  $q$select public.trace_is_editor()$q$);
 
 -- ---- Views and the recursive lineage function ------------------------
 do $$
@@ -163,20 +138,51 @@ begin
   if n = 0 then raise notice 'PASS  WEAK ENTITY: deleting a source deletes its pins (ON DELETE CASCADE)';
   else raise exception 'FAIL  % pins left behind', n; end if;
 end $$;
-select pg_temp.expect_error('RLS: visitors cannot add notes', 'anon', null,
-  $q$insert into public.note (body, author_id, finding_id) values ('Anon note', 1, 1)$q$, '42501');
+select pg_temp.expect_ok('ACCESS: the app can add and delete notes', 'anon', null,
+  $q$with n as (insert into public.note (body, author_id, insight_id) values ('App note', 1, 1) returning id) delete from public.note where id in (select id from n)$q$);
+select pg_temp.expect_ok('ACCESS: the app can add and delete pins', 'anon', null,
+  $q$with p as (insert into public.annotation (source_id, x, y, body, author_id) values (2, 0.5, 0.5, 'App pin', 1) returning id) delete from public.annotation where id in (select id from p)$q$);
+select pg_temp.expect_ok('STORAGE: the app can add and delete files in the sources bucket', 'anon', null,
+  $q$with f as (insert into storage.objects (bucket_id, name) values ('sources', 'test.webp') returning id) delete from storage.objects where id in (select id from f)$q$);
+select pg_temp.expect_error('STORAGE: other buckets stay closed', 'anon', null,
+  $q$insert into storage.objects (bucket_id, name) values ('somewhere-else', 'x.webp')$q$, '42501');
 
 -- Writes performed directly as the API role (not inside a helper function),
 -- exactly as PostgREST runs them, so trigger permissions are exercised.
-set local role authenticated;
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000e1","role":"authenticated"}';
-insert into public.observation (session_id, title, description) values (1, 'Editor observation', 'Inserted as the API role');
+set local role anon;
+insert into public.observation (session_id, title, description) values (1, 'App observation', 'Inserted as the API role');
 insert into public.observation_finding (observation_id, finding_id)
-  select id, 1 from public.observation where title = 'Editor observation';
-insert into public.finding (project_id, title, description) values (1, 'Editor finding', 'Inserted as the API role');
-update public.observation set session_id = 2 where title = 'Editor observation';
+  select id, 1 from public.observation where title = 'App observation';
+insert into public.finding (project_id, title, description) values (1, 'App finding', 'Inserted as the API role');
+update public.observation set session_id = 2 where title = 'App observation';
 reset role;
-\echo 'PASS  API role: editor inserts observations, links and findings through the triggers'
+\echo 'PASS  API role: the app inserts observations, links and findings through the triggers'
+
+-- ---- Destructive delete tests run last (earlier tests use these records) ------
+do $$
+declare links_before int; links_after int; obs_before int; obs_after int;
+begin
+  select count(*) into links_before from public.observation_finding where finding_id = 1;
+  select count(*) into obs_before from public.observation;
+  perform pg_temp.run_as('anon', null, 'delete from public.finding where id = 1');
+  select count(*) into links_after from public.observation_finding where finding_id = 1;
+  select count(*) into obs_after from public.observation;
+  if links_before > 0 and links_after = 0 and obs_before = obs_after then
+    raise notice 'PASS  DELETE: deleting a finding removes its links but not its observations (CASCADE on the junction)';
+  else raise exception 'FAIL  finding delete: links % -> %, observations % -> %', links_before, links_after, obs_before, obs_after; end if;
+end $$;
+do $$
+declare links_before int; links_after int; target bigint;
+begin
+  select participant_id into target from public.session_participant limit 1;
+  select count(*) into links_before from public.session_participant where participant_id = target;
+  perform pg_temp.run_as('anon', null, format('delete from public.participant where id = %s', target));
+  select count(*) into links_after from public.session_participant where participant_id = target;
+  if links_before > 0 and links_after = 0 then raise notice 'PASS  DELETE: deleting a participant removes their session links (CASCADE)';
+  else raise exception 'FAIL  participant delete: links % -> %', links_before, links_after; end if;
+end $$;
+select pg_temp.expect_ok('DELETE: a session without observations can be deleted', 'anon', null,
+  $q$delete from public.research_session where not exists (select 1 from public.observation o where o.session_id = research_session.id) and id = (select min(id) from public.research_session s where not exists (select 1 from public.observation o where o.session_id = s.id))$q$);
 
 rollback;
 \echo 'All SQL tests passed.'

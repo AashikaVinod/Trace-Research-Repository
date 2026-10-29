@@ -75,13 +75,13 @@ function render() {
 }
 
 // -------------------------------------------------------------------
-// Shell: the demo card and background motion
+// Shell: the connection card and background motion
 // -------------------------------------------------------------------
 
 function renderShell() {
   $('#mode-card').innerHTML = `
-    <strong><span class="mode-dot sample"></span>Demo data</strong>
-    <p>A fictional study. What you add is kept in this browser.</p>`;
+    <strong><span class="mode-dot live"></span>Supabase</strong>
+    <p>Everything you add is saved to your database.</p>`;
 }
 
 function openMenu() {
@@ -116,7 +116,7 @@ function handleShortcut(event) {
 // Start
 // -------------------------------------------------------------------
 
-function start() {
+async function start() {
   const navIcons = { '/': 'house', '/projects': 'folder-kanban', '/library': 'files', '/trail': 'waypoints', '/sessions': 'calendar-days', '/people': 'users', '/database': 'database', '/sources': 'images' };
   for (const link of $$('[data-nav]')) link.insertAdjacentHTML('afterbegin', icon(navIcons[link.dataset.nav]));
   $('#menu-btn').innerHTML = icon('menu');
@@ -136,7 +136,21 @@ function start() {
   $('#motion-btn').onclick = () => setMotion(!document.body.classList.contains('still'));
   document.addEventListener('keydown', handleShortcut);
 
-  startDatabase();
+  try {
+    await startDatabase();
+  } catch (error) {
+    // Not connected, or the database could not be reached: say so plainly.
+    $('#mode-card').innerHTML = '<strong><span class="mode-dot sample"></span>Not connected</strong>';
+    setCrumbs(['Setup']);
+    view.innerHTML = `<div class="empty error">
+      <h2>${error.kind === 'config' ? 'TRACE is not connected to Supabase yet' : "TRACE couldn't load its data"}</h2>
+      <p>${esc(error.message)}</p>
+      ${error.kind === 'config' ? '<p class="muted">Follow SETUP.md, then reload this page.</p>' : '<button class="btn" id="retry">Try again</button>'}
+    </div>`;
+    if ($('#retry')) $('#retry').onclick = () => location.reload();
+    return;
+  }
+
   window.addEventListener('hashchange', () => { render(); view.focus({ preventScroll: true }); window.scrollTo(0, 0); });
   render();
 }

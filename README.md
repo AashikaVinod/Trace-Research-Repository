@@ -1,187 +1,97 @@
-<p align="center"><img src="assets/logo-mark.svg" width="64" height="64" alt="TRACE logo"></p>
+# TRACE: a UX research repository
 
-# TRACE
+A DBMS course project. TRACE connects UX research evidence step by step, so any design decision can be traced back to what people actually did and said:
 
-**Every design decision has a story.**
+**Observation → Finding → Insight → Recommendation → Design decision**
 
-TRACE is a UX research repository built for a Database Management Systems course. It stores research projects, participants, sessions and evidence in PostgreSQL. It connects the evidence step by step:
+It is a plain HTML/CSS/JavaScript website (no framework, no build step) on top of a **Supabase** (PostgreSQL) database, deployed on **Vercel**. Photos, sketches and scans are stored in Supabase Storage. There is no login: it is built for one person.
 
-**1 Observation → 2 Finding → 3 Insight → 4 Recommendation → 5 Design decision**
+> **To set it up, follow [SETUP.md](SETUP.md)**: Supabase, then GitHub, then Vercel. Step by step, about 30 minutes.
 
-Pick any decision and TRACE shows the real observations behind it. Every link is a row in a junction table, and the trail is computed with a recursive SQL query.
-
-> All projects, people, participants and results in the sample data are **fictional**.
-
-## Contents
-
-1. [What's in the app](#whats-in-the-app)
-2. [Run it now](#run-it-now)
-3. [How the code fits together](#how-the-code-fits-together)
-4. [The database (sql folder)](#the-database-sql-folder)
-5. [Security model](#security-model)
-6. [Push to GitHub and deploy on Vercel](#push-to-github-and-deploy-on-vercel)
-7. [Testing](#testing)
-8. [Troubleshooting](#troubleshooting)
-9. [Known limitations](#known-limitations)
-
-More documents:
-
-- `docs/dbms-concepts.md`: every DBMS concept in TRACE, linked to a feature you can demo. Use it for your presentation.
-- `docs/database-design.md`: entities, keys, relationships and normalisation.
-- `docs/ux-audit.md`: the HCI and accessibility audit, and what was changed.
-- `docs/brand.md`: logo, colour palette and type.
-- `docs/testing-checklist.md`: what was tested, how, and what is still unverified.
-
----
-
-## What's in the app
+## Pages
 
 | Page | What you can do | Main DBMS idea |
 | --- | --- | --- |
-| **Dashboard** | Stat cards with change badges and sparklines, research activity, the next session, evidence in use (gauge), project progress, how sessions felt, best-backed decisions, the latest decision and research rhythm | Aggregates, views, GROUP BY, recursive CTE |
-| **Projects** | A table with team avatars and segmented evidence bars; search, filter, create, edit, archive with Undo, restore. Project pages have a funnel, sentiment faces and question coverage. | JOINs, soft delete, triggers |
-| **Research library** | Folder tabs for the five evidence types, search and project filter | UNION ALL view, WHERE / ILIKE |
-| **Sources** | Whiteboard photos, sketches, notes and documents, in project folders with type filters. Open one to see numbered pins; click the image to pin a note. Upload your own photos from any session or record. | Exclusive arc, weak entity, CASE / COALESCE view |
-| **Evidence trail** | Trace any record up and down the chain, with live connector lines; strongest decisions; gaps to close | Recursive CTE, anti-join |
-| **Sessions** | Charts of sessions per month and methods used; create and edit sessions; record observations | Foreign keys, M:N junctions |
-| **People** | Participants (codes only), segments chart, age chart, team, methods, segments | M:N, UNIQUE, CHECK |
-| **Database** | Schema diagram, rows per table, a feature-to-concept map, and a query lab that runs the real views | Everything, in one place |
+| **Dashboard** | Totals, research activity, the next session, evidence in use, project progress, sentiment, best-backed decisions, the latest decision | Aggregates, views, GROUP BY |
+| **Projects** | A table with team and evidence per project. Create, edit, archive (with Undo), restore, **delete** (when empty). Project pages list sessions and research questions | JOINs, soft delete, triggers, ON DELETE RESTRICT |
+| **Sessions** | All sessions with filters; session pages hold observations, sources and notes | Foreign keys, many-to-many junction tables |
+| **People** | Participants (by code only), team, methods and segments | Many-to-many, UNIQUE, CHECK |
+| **Research library** | The five kinds of evidence in folder tabs, with search. Record pages show what a record is built on and what is built on it. Add the next step from any record | UNION ALL view, ILIKE, junction tables |
+| **Evidence trail** | Pick any record and follow it back to the observations and forward to the decisions, with lines for every link | Recursive CTE (`trace_lineage`) |
+| **Sources** | Whiteboard photos, sketches and notes in project folders. Upload your own, click a photo to pin numbered notes on it | Exclusive arc, weak entity, Storage |
+| **Database** | The schema, which DBMS concept powers each feature, and a query lab that runs the **real SQL views** on your database | Everything, in one place |
 
-Every page ends with a **"How the database does this"** panel that names the concepts behind it and shows the SQL.
-
-**Keyboard:** `/` search, `N` add something new, `Esc` close.
-
-**Demo data:** TRACE opens with a fictional sample study (the same rows as `sql/04_seed_data.sql`). Anything you add is kept in this browser with localStorage, so it is still there after a reload. To start again from the original sample, clear the site's data in your browser settings.
-
-**Background:** a WebGL shader (`js/background.js`) draws slowly flowing liquid in the TRACE colours. **Pause motion** in the sidebar stops it. It also stops for people who ask their system for reduced motion, and it is skipped on phones.
-
-## Run it now
-
-Double-click `index.html`. It opens with the sample study loaded. No setup is needed.
-
-You can also serve the folder, which is closer to how Vercel serves it:
-
-```bash
-cd trace
-python3 -m http.server 8080      # then open http://localhost:8080
-```
-
-**To demo adding things:** click **New** in the top bar. On any record's page, use **Leads to** to add the next step with the link already ticked. Then open **Evidence trail** to show the whole story, and **Database → Query lab** to run the SQL behind it.
+Everything can be **added, edited and deleted** in the app (Delete is inside each edit dialog). The database refuses a delete while other records still depend on it, and the app says why. Keyboard: `/` jumps to search, `N` adds something, `Esc` closes a dialog.
 
 ## How the code fits together
 
-The JavaScript uses plain `<script>` tags, with no framework, modules or build step. The files load in this order, so each file can use the ones above it:
-
 ```
 index.html                  the page shell and the order scripts load in
-js/icons.js                 icon shapes (Lucide)
-js/sample-data.js           the fictional sample study (generated from tools/generate_seed.py)
-js/helpers.js               esc() for safe HTML, icons, dates, toasts, dialogs, the form builder
-js/charts.js                charts and dashboard components (sparklines, gauge, pill columns, leaderboard…) made from HTML + CSS
-js/db.js                    ALL data access: loadAll(), save functions, statistics, the views
-js/editors.js               every add/edit form
-js/attachments.js           sources (photo upload), notes and pinned notes on images, used on every record and session page
-js/pages/*.js               one file per page: home, projects, library, trail, sources, sessions, people, database
-js/app.js                   start-up, sidebar, and which page to show for each address
+SETUP.md                    step-by-step: Supabase, GitHub, Vercel
+vercel.json                 security headers (allows only this site and Supabase)
+js/config.js                your Supabase URL and publishable key (the only file you edit)
+js/db.js                    ALL data access: loading, saving, deleting, photo upload, statistics
+js/helpers.js               small tools: escaping, icons, toasts, dialogs, the form builder
+js/editors.js               every add/edit form (each one has a Delete button when editing)
+js/attachments.js           sources (photo upload), notes, and pinned notes on photos
+js/charts.js                bars, columns, donuts and funnels made from plain HTML + CSS
 js/background.js            the moving liquid background (WebGL; you don't need to edit it)
-css/tokens.css              brand colours, spacing, type (change the design here)
-css/style.css               all styles, in numbered sections
-sql/                        01 schema, 02 constraints, 03 security, 04 seed, 05 queries, 06 views, 99 uninstall
-assets/                     logo, favicon, fonts, liquid.webp (still background), sources/ (the illustrated research artefacts)
-tools/                      generate_seed.py (sample data), generate_sources.py (draws the illustrated sources)
-tests/                      SQL tests and browser tests (not deployed)
+js/app.js                   start-up, sidebar, and which page to show for each address
+js/pages/*.js               one file per page
+js/icons.js                 icon shapes (Lucide subset)
+vendor/                     the Supabase browser library, vendored so nothing loads from a CDN
+css/                        tokens.css (colours, spacing) and style.css (everything else)
+assets/                     logo, favicon, fonts, the liquid still image, sources/ (four starter photos)
+sql/                        the database (see below)
+tests/                      SQL tests, browser tests, and a local Supabase stand-in
+tools/                      generate_seed.py (starter data), build_install.py, generate_sources.py
+docs/                       database design, DBMS concepts for your presentation, testing record
 ```
 
-The pattern every page follows:
-
-1. `loadAll()` in `db.js` reads every table into one object, `data`, for example `data.research_project`.
-2. A page function such as `pageProjects()` builds HTML from `data` with template strings, then attaches click handlers. Every value from the database goes through `esc()`, so typed text can't become HTML.
-3. A form in `editors.js` calls a save function in `db.js`. It writes one change, reloads `data`, and the page is drawn again.
+1. `loadAll()` reads every table from Supabase into one `data` object.
+2. A page function draws itself from `data` with template strings. Every value goes through `esc()`.
+3. A form in `editors.js` calls a save function in `db.js`. It writes one change to Supabase, reloads `data`, and the page is drawn again, so a new record appears everywhere (library, trail, dashboard) at once.
 
 **To add a page:** write `function pageSomething()` in a new file in `js/pages/`, add a `<script>` tag for it in `index.html`, and add a line to `ROUTES` in `app.js`.
 
-## The database (sql folder)
+## The database
 
-The app runs as a browser demo, but the database behind its design is real PostgreSQL. You can install it anywhere PostgreSQL runs (a local install, or a free Supabase project's SQL Editor) and show it in class. Run the files in this order:
+Install it by pasting **`sql/install_all.sql`** into the Supabase SQL Editor (SETUP.md, step 2). That file is the files below joined in order by `tools/build_install.py`:
 
-| Order | File | What it does |
-| --- | --- | --- |
-| 1 | `sql/01_schema.sql` | 21 tables. Stops without changes if TRACE tables already exist. |
-| 2 | `sql/02_constraints_and_indexes.sql` | Foreign keys, CHECK and UNIQUE rules, indexes, triggers |
-| 3 | `sql/03_security.sql` | Row Level Security, grants, the `trace_editor` allowlist (needs Supabase's `auth` schema, or the stubs in `tests/sql/00_supabase_local_stubs.sql`) |
-| 4 | `sql/04_seed_data.sql` | The same fictional study the app shows |
-| 5 | `sql/06_views.sql` | 9 views and the recursive `trace_lineage` function, the ones in the Database page's query lab |
-| 6 | `sql/07_sources_and_notes.sql` | Sources, notes and annotation pins (exclusive arc, weak entity), with RLS and the `v_source_owner` view |
-| 7 | `sql/08_sources_seed.sql` | The sample study's sources, notes and pins |
-| optional | `sql/05_demo_queries.sql` | Ten read-only queries to show in class |
+| File | What it does |
+| --- | --- |
+| `01_schema.sql` | 24 tables: 12 entity tables, 9 many-to-many junction tables, and sources, notes and pins |
+| `02_constraints_and_indexes.sql` | Foreign keys with their delete rules, CHECK and UNIQUE rules, indexes, 5 trigger functions |
+| `03_security.sql` | Row Level Security and grants: single-user mode, no login |
+| `04_seed_data.sql` | The starter study: one fictional project with sessions, evidence and a team |
+| `06_views.sql` | 9 views and the recursive `trace_lineage` function used by the Evidence trail and the Database page |
+| `07_sources_and_notes.sql` | Sources, notes and annotation pins (an exclusive arc and a weak entity), plus `v_source_owner` |
+| `08_sources_seed.sql` | The starter study's four photos, notes and pins |
+| `09_storage.sql` | The public Storage bucket `sources` and its policies |
+| `05_demo_queries.sql` | Optional read-only queries to show in class (not part of the install) |
+| `99_uninstall_trace.sql` | Destructive: removes TRACE (needs a confirmation line uncommented) |
 
-Only `99_uninstall_trace.sql` deletes anything, and it refuses to run until you uncomment its confirmation line.
-
-The app's Database page computes each view in the browser with the same logic, so the demo works offline. The SQL tests check the real views against the same data. An earlier version of the app could also read and write a live Supabase database; it is in the git history (commit `b57b688`) if you want to bring that back later.
+Design notes and the DBMS concepts behind each feature are in `docs/database-design.md` and `docs/dbms-concepts.md`.
 
 ## Security model
 
-This is designed into `sql/03_security.sql` and tested by the SQL tests. The browser demo has no sign-in.
+Single user, **no login**. The app uses Supabase's public (publishable) key, and the policies in `03_security.sql` let that key read, add, change and delete every table. Row Level Security stays on, with one "open access" policy per table, so a table with no policy would be closed. The result: **anyone who has your site's address can edit or delete your data.** Keep the address private, don't store real participant data, and read the Safety section of SETUP.md. To lock it down later, replace `using (true)` in the policies with a check on a signed-in user.
 
-| Who | Can do |
-| --- | --- |
-| Visitors | Read every TRACE table and view (the data is fictional and meant to be shown) |
-| Signed-in user not in `trace_editor` | Read only |
-| Signed-in editor | Create and update records, add and remove links |
-| Anyone through the API | Can't delete projects or evidence (projects are archived instead) |
-
-- Row Level Security is on for every table, and views use `security_invoker`, so they obey it too.
-- `trace_editor` can't be read through the API. The `trace_is_editor()` function only answers "am I an editor?".
-- **Don't store real participant data in this demo.** Public read access is fine only because the data is fictional.
-- Every value shown on screen goes through `esc()`. `vercel.json` sets a Content Security Policy that only allows the site's own scripts and connections.
-
-
-## Push to GitHub and deploy on Vercel
-
-**GitHub:** create an **empty** repository at <https://github.com/new>, then run:
-
-```bash
-cd trace
-git remote add origin https://github.com/<your-username>/trace.git
-git branch -M main
-git push -u origin main
-```
-
-Sign in through the browser prompt, or with `gh auth login`. Never paste a token into a chat or a commit. To put your own name on the commits first, run `git commit --amend --reset-author`, since the existing commits use a placeholder author.
-
-**Vercel:** at <https://vercel.com/new>, import the repository. Choose framework preset **Other**, with no build command and the default output directory. No environment variables are needed. Once it's deployed, open the URL and check that the sample study appears, that you can add a project and still see it after reloading, and that the browser console shows no errors.
-
-TRACE uses `#/` addresses, so no rewrite rules are needed.
-
-## Supabase: current status
-
-The Supabase database is **not connected yet**. The app saves to the browser, and the SQL files in `sql/` are tested but not installed in a live project. Connecting it needs the app's save functions in `js/db.js` rewritten to talk to Supabase, and the schema installed in order (`sql/01` to `sql/08`). Until then, nothing you add reaches a server, and the deployed site only shows the demo study.
-
-Once it is connected, the steps are: create a project at <https://supabase.com>, run the SQL files in order in the SQL Editor, add your user to `trace_editor`, put the project URL and **publishable** key into the app, and add the Supabase domain to `connect-src` in `vercel.json`. Never use the `service_role` key in the browser.
+The app refuses to start if `js/config.js` contains a secret key or the `service_role` key.
 
 ## Testing
 
-Results are recorded in `docs/testing-checklist.md`.
+Results are recorded in `docs/testing-checklist.md`. Nothing has been run against a real Supabase project yet; everything was run against a local PostgreSQL + PostgREST + a Storage stand-in.
 
-| Suite | Command | Needs |
-| --- | --- | --- |
-| SQL integrity, security, views, sources (40 checks) | `tests/run-sql-tests.sh` | Local PostgreSQL superuser |
-| Every user flow in the browser (27 steps) | `node tests/serve.mjs 8080`, then `BASE=http://localhost:8080 node tests/e2e.mjs` | `npm install --no-save playwright && npx playwright install chromium` |
-
-## Troubleshooting
-
-| Symptom | Likely cause and fix |
+| Suite | Command |
 | --- | --- |
-| Stuck on "Loading TRACE…" | Open the browser console (F12) and look for a red error. Usually a file is missing from the folder. |
-| The background is still, not moving | Your browser may not support WebGL, or "reduce motion" is on, or Pause motion was pressed. The still image shows instead, and everything else works. |
-| The background feels heavy on an older laptop | Click **Pause motion** at the bottom of the sidebar (the choice is remembered). |
-| I want the original sample back | Clear this site's data in your browser settings (it is stored in localStorage). |
+| 43 SQL checks (constraints, triggers, open access, deletes, views, storage, and the one-file install) | `./tests/run-sql-tests.sh` (needs a local PostgreSQL superuser) |
+| 30-step browser test against the database | `POSTGREST_BIN=/path/to/postgrest ./tests/supabase-local/run-e2e.sh` (needs `npm install --no-save playwright && npx playwright install chromium`) |
+| Fresh-install check of the starter study | `TRACE_DB=trace_test_install E2E_SCRIPT=tests/smoke.mjs POSTGREST_BIN=... ./tests/supabase-local/run-e2e.sh` |
 
 ## Known limitations
 
-- The sample study's sources are **illustrations** (drawn by `tools/generate_sources.py` in a handwriting font), not photos of real artefacts. They are labelled "Illustration" in the viewer. Your uploads are labelled "Uploaded".
-- Uploaded photos are resized and kept in this browser's storage, which holds only a few MB (roughly 20–30 photos). TRACE warns you when it's full. In PostgreSQL, `source.file_url` would point to file storage, not hold the image itself.
-
-- The app is a browser demo: data lives in this browser's localStorage. The real PostgreSQL design, with constraints, triggers, views, RLS and seed data, is in `sql/` and is tested separately.
-- The liquid background needs a graphics card to run smoothly. It was built and checked on a machine without one (about 4 frames a second there), so real-device smoothness hasn't been measured. It draws at 40% resolution and at most 30 frames a second to stay light.
-- One user, no sign-in, no real-time collaboration, no file uploads.
+- Not yet tested against real Supabase and Vercel (see the testing checklist).
+- The starter study's photos are **illustrations** (drawn by `tools/generate_sources.py` in a handwriting font), labelled "Illustration" in the viewer. Photos you upload are labelled "Uploaded".
+- Supabase returns at most 1,000 rows per table per request by default; TRACE warns when a table reaches that.
+- One user, no login, no real-time collaboration. Links between records are saved with separate requests, so a failure partway says exactly what was and wasn't saved.

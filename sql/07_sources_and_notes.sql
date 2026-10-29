@@ -76,20 +76,15 @@ create index annotation_source_idx on public.annotation (source_id);
 create trigger source_touch_updated_at before update on public.source
   for each row execute function public.trace_touch_updated_at();
 
--- Same access model as the other tables: everyone reads, editors write,
--- and editors may delete their notes and pins (but not sources' parents).
+-- Same access model as the other tables (see 03_security.sql): single user, no login.
 do $$
 declare t text;
 begin
   foreach t in array array['source', 'note', 'annotation'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
-    execute format('grant select on public.%I to anon, authenticated', t);
-    execute format('grant insert, update, delete on public.%I to authenticated', t);
-    execute format('create policy %I on public.%I for select to anon, authenticated using (true)', t || ': anyone can read', t);
-    execute format('create policy %I on public.%I for insert to authenticated with check ((select public.trace_is_editor()))', t || ': editors can insert', t);
-    execute format('create policy %I on public.%I for update to authenticated using ((select public.trace_is_editor())) with check ((select public.trace_is_editor()))', t || ': editors can update', t);
-    execute format('create policy %I on public.%I for delete to authenticated using ((select public.trace_is_editor()))', t || ': editors can delete', t);
+    execute format('grant select, insert, update, delete on public.%I to anon, authenticated', t);
+    execute format('create policy %I on public.%I for all to anon, authenticated using (true) with check (true)', t || ': open access', t);
   end loop;
 end $$;
 

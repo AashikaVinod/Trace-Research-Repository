@@ -135,11 +135,12 @@ Evidence records (finding, insight, recommendation, decision) do carry `project_
 
 The candidate keys enforced by UNIQUE constraints (for example `participant_code`, or `lower(email)`) are all superkeys of their tables, which satisfies BCNF.
 
-## Security tables and functions
+## Access and delete rules
 
-- `trace_editor(user_id → auth.users.id)` is the allowlist of accounts that may write. RLS is on, with no policies and no grants, so it is invisible through the API.
-- `trace_is_editor()` is a `security definer` function used by every insert, update and delete policy.
-- Policies: `select` for `anon` and `authenticated`; `insert` and `update` for editors on entity tables; `insert` and `delete` for editors on junction tables. No role may delete entity rows through the API.
+- **No login, single user.** Every table has row-level security switched on and one policy, "open access", for the `anon` and `authenticated` roles (see `sql/03_security.sql` and `sql/07_sources_and_notes.sql`). Tighten it by replacing `using (true)` with a check on a signed-in user.
+- `trace_project_of(text, bigint)` is a read-only helper that the integrity triggers call, so the app's role may execute it.
+- **Delete rules.** Junction rows cascade from both sides, so deleting a finding removes only its links. `note`, `annotation` and `source` rows cascade from what they belong to. Sessions, projects, researchers, methods, segments and research questions use `RESTRICT`: the database refuses (error 23503) while anything still depends on them, and the app turns that into "This can't be deleted yet: observations still depend on it".
+- **Photos.** `source.file_url` holds a file's name in the Storage bucket `sources`; the app removes the file when it deletes the row (`sql/09_storage.sql` sets the bucket and its policies).
 
 ## Indexes
 

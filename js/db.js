@@ -2,16 +2,18 @@
 // db.js - everything that reads or writes data.
 //
 // How it works:
-//   1. loadAll() reads every TRACE table into the `data` object.
+//   1. loadAll() reads every TRACE table from Supabase into `data`.
 //   2. Pages draw themselves from `data` (no queries inside pages).
-//   3. Each save function writes ONE change, then calls loadAll() again.
+//   3. Each save function writes ONE change to Supabase, then calls
+//      loadAll() again, so every page and the evidence trail show it.
 //
-// The data starts as the sample study in js/sample-data.js (the same rows
-// as sql/04_seed_data.sql). Changes are kept in this browser with
-// localStorage, so they are still there after a reload.
+// Photos live in the Supabase Storage bucket "sources"; a source row keeps
+// the file's name. Nothing is stored in the browser.
 // ===================================================================
 
-let data = {}; // every table, e.g. data.research_project is a list of rows
+let data = {};     // every table, e.g. data.research_project is a list of rows
+let client = null; // the Supabase client (created in startDatabase)
+const BUCKET = 'sources';
 
 const TABLES = [
   'researcher', 'segment', 'research_method', 'research_project', 'project_researcher', 'project_method',
@@ -70,20 +72,51 @@ function pick(table, values) {
   return row;
 }
 
-function copy(value) { return JSON.parse(JSON.stringify(value)); }
-
 // -------------------------------------------------------------------
-// Start-up
+// Connecting to Supabase
 // -------------------------------------------------------------------
 
-function startDatabase() {
-  loadSample();
-  loadAll();
+// Returns a message if js/config.js is empty or wrong, otherwise null.
+function configProblem() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return 'js/config.js is empty. Paste your Supabase project URL and publishable key into it (SETUP.md, step 4).';
+  if (!SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.startsWith('http://localhost')) return 'SUPABASE_URL must start with https://';
+  if (SUPABASE_KEY.startsWith('sb_secret_')) return 'That is a SECRET key. Remove it from js/config.js, reset it in Supabase, and use the publishable key.';
+  if (SUPABASE_KEY.split('.').length === 3) {
+    try {
+      const payload = JSON.parse(atob(SUPABASE_KEY.split('.')[1].replaceAll('-', '+').replaceAll('_', '/')));
+      if (payload.role === 'service_role') return 'That is the SERVICE ROLE key, which bypasses all security. Remove it, reset it in Supabase, and use the publishable key.';
+    } catch (error) {
+      // Not readable as a JWT: that's fine, Supabase will check it.
+    }
+  }
+  return null;
+}
+
+async function startDatabase() {
+  const problem = configProblem();
+  if (problem) {
+    const error = new Error(problem);
+    error.kind = 'config';
+    throw error;
+  }
+  // No login: nothing about a user is stored in the browser.
+  client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  await loadAll();
 }
 
 // Reads every table into `data`.
-function loadAll() {
-  data = copy(sample);
+async function loadAll() {
+  const results = await Promise.all(TABLES.map((table) => client.from(table).select('*')));
+  const next = {};
+  for (let i = 0; i < TABLES.length; i++) {
+    if (results[i].error) throw friendlyError(results[i].error, 'load the data');
+    next[TABLES[i]] = results[i].data;
+    if (next[TABLES[i]].length && 'id' in next[TABLES[i]][0]) next[TABLES[i]].sort((a, b) => a.id - b.id);
+  }
+  data = next;
+  // Supabase returns at most 1,000 rows per table per request by default.
+  const full = TABLES.filter((table) => next[table].length >= 1000);
+  if (full.length) toast(`Only the first 1,000 rows of ${full.join(', ')} are shown. See SETUP.md, "Limits".`, 'error');
   // An observation's project comes through its session (it isn't stored twice: 3NF).
   for (const observation of data.observation) {
     const session = byId('research_session', observation.session_id);
@@ -91,70 +124,46 @@ function loadAll() {
   }
 }
 
-// -------------------------------------------------------------------
-// Storage (localStorage)
-// -------------------------------------------------------------------
+// Which records depend on another one, in words (for "can't delete yet" messages).
+const DEPENDENTS = {
+  observation: 'observations', finding: 'findings', insight: 'insights', recommendation: 'recommendations',
+  design_decision: 'decisions', research_session: 'sessions', research_question: 'research questions', note: 'notes',
+};
 
-const SAMPLE_KEY = 'trace.sample.v4'; // change this when the sample data changes
-let sample = null;
-
-function loadSample() {
-  try {
-    sample = JSON.parse(localStorage.getItem(SAMPLE_KEY));
-  } catch (error) {
-    sample = null;
+// Turns a PostgreSQL error into a sentence people can act on.
+function friendlyError(error, action) {
+  const text = error.message || String(error);
+  const code = error.code || '';
+  let message = text;
+  let field = '';
+  if (/failed to fetch|networkerror|load failed/i.test(text)) {
+    message = `Couldn't reach Supabase to ${action}. Check your connection and try again.`;
+  } else if (/bucket not found/i.test(text)) {
+    message = 'The photo bucket "sources" was not found. Run sql/09_storage.sql in Supabase (or sql/install_all.sql).';
+  } else if (code === '42501' || /row-level security|permission denied/i.test(text)) {
+    message = `Supabase refused to ${action}. Check that the SQL files were run (SETUP.md, step 2) and that js/config.js has your publishable key.`;
+  } else if (code === '23505') { // UNIQUE constraint
+    if (text.includes('participant_code')) field = 'participant_code';
+    else if (text.includes('email')) field = 'email';
+    else if (text.includes('name_key')) field = 'name';
+    else if (text.includes('question')) field = 'question_text';
+    else field = 'title';
+    message = field === 'participant_code' ? 'Another participant already uses this code.' : 'Something with this name already exists here.';
+  } else if (code === '23503' && text.startsWith('update or delete')) { // still used by other rows
+    const used = (text.match(/on table "(\w+)"/g) || []).pop();
+    const table = used ? used.match(/"(\w+)"/)[1] : '';
+    message = `This can't be deleted yet: ${DEPENDENTS[table] || 'other records'} still depend on it. Delete or move those first.`;
+  } else if (code === '23503') { // FOREIGN KEY on insert
+    message = 'This refers to a record that no longer exists. Reload the page and try again.';
+  } else if (code === 'PGRST205' || code === '42P01') {
+    message = 'The TRACE tables were not found. Run sql/install_all.sql in the Supabase SQL Editor (SETUP.md, step 2).';
+  } else if (code === '23514' && text.includes('violates check constraint')) { // CHECK constraint
+    message = 'One of the values is not allowed. Check the form and try again.';
   }
-  if (!sample) sample = copy(SAMPLE_DATA);
-  // Data saved by an older version may be missing newer tables: add them.
-  for (const table of TABLES) {
-    if (!sample[table]) sample[table] = copy(SAMPLE_DATA[table] || []);
-  }
-}
-
-// Returns false if the browser refused to store the data (for example, it's full of photos).
-function saveSample() {
-  try {
-    localStorage.setItem(SAMPLE_KEY, JSON.stringify(sample));
-    return true;
-  } catch (error) {
-    return false; // changes stay on screen until the page is reloaded
-  }
-}
-
-// A few of the database's rules, repeated here so the demo behaves like PostgreSQL.
-function checkRules(table, row, existing = null) {
-  const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-  const others = sample[table].filter((r) => r !== existing);
-  if (table === 'research_project' && others.some((r) => same(r.title, row.title))) {
-    throw fieldError('title', 'A project with this title already exists.');
-  }
-  if (table === 'participant' && others.some((r) => r.participant_code === row.participant_code)) {
-    throw fieldError('participant_code', 'Another participant already uses this code.');
-  }
-  if (STAGE[table] && table !== 'observation' && others.some((r) => r.project_id === row.project_id && same(r.title, row.title))) {
-    throw fieldError('title', 'This project already has a record with this title.');
-  }
-  // Exclusive arc: a source or note belongs to exactly one thing (a CHECK in PostgreSQL).
-  if (table === 'source' || table === 'note') {
-    const owners = Object.values(OWNER_COLUMN).filter((column) => row[column] !== null && row[column] !== undefined);
-    if (owners.length !== 1) throw fieldError('attach', 'Choose one thing to attach this to.');
-  }
-  // Archived projects accept no new work (a trigger does this in PostgreSQL).
-  let projectId = row.project_id;
-  if (table === 'observation') {
-    const session = sample.research_session.find((s) => s.id === row.session_id);
-    projectId = session ? session.project_id : null;
-  }
-  const project = sample.research_project.find((p) => p.id === projectId);
-  if (!existing && project && project.archived_at && table !== 'research_project') {
-    throw new Error('This project is archived. Restore it before adding new work.');
-  }
-}
-
-function fieldError(field, message) {
-  const error = new Error(message);
-  error.field = field;
-  return error;
+  const friendly = new Error(message);
+  friendly.code = code;
+  friendly.field = field;
+  return friendly;
 }
 
 // -------------------------------------------------------------------
@@ -162,47 +171,66 @@ function fieldError(field, message) {
 // -------------------------------------------------------------------
 
 // INSERT one row and return it.
-function insertRow(table, row) {
-  checkRules(table, row);
-  const now = new Date().toISOString();
-  const nextId = Math.max(0, ...sample[table].map((r) => r.id)) + 1; // like an identity column
-  const saved = { ...row, id: nextId, created_at: now, updated_at: now };
-  sample[table].push(saved);
-  saveSample();
-  return saved;
+async function insertRow(table, row) {
+  const result = await client.from(table).insert(row).select();
+  if (result.error) throw friendlyError(result.error, 'save this');
+  return result.data[0];
 }
 
 // UPDATE one row by id and return it.
-function updateRow(table, id, changes) {
-  const existing = sample[table].find((r) => r.id === id);
-  checkRules(table, { ...existing, ...changes }, existing);
-  Object.assign(existing, changes, { updated_at: new Date().toISOString() }); // like the updated_at trigger
-  saveSample();
-  return existing;
+async function updateRow(table, id, changes) {
+  const result = await client.from(table).update(changes).eq('id', id).select();
+  if (result.error) throw friendlyError(result.error, 'save the changes');
+  if (!result.data.length) throw new Error('Nothing was saved: this record may have been deleted. Reload the page.');
+  return result.data[0];
+}
+
+// DELETE one row by id. The database refuses if other rows still depend on it.
+async function deleteById(table, id) {
+  const result = await client.from(table).delete().eq('id', id).select();
+  if (result.error) throw friendlyError(result.error, 'delete this');
+  if (!result.data.length) throw new Error('Nothing was deleted: it may already be gone. Reload the page.');
 }
 
 // INSERT rows into a junction table.
-function addLinks(table, rows) {
-  for (const row of rows) sample[table].push({ ...row, created_at: new Date().toISOString() });
-  saveSample();
+async function addLinks(table, rows) {
+  if (rows.length === 0) return;
+  const result = await client.from(table).insert(rows).select();
+  if (result.error) throw friendlyError(result.error, 'link the records');
 }
 
 // DELETE rows from a junction table. Each row is a match like { finding_id: 3, insight_id: 5 }.
-function removeLinks(table, rows) {
+async function removeLinks(table, rows) {
   for (const match of rows) {
-    sample[table] = sample[table].filter((r) => !Object.keys(match).every((key) => r[key] === match[key]));
+    const result = await client.from(table).delete().match(match).select();
+    if (result.error) throw friendlyError(result.error, 'remove a link');
   }
-  saveSample();
 }
 
 // Makes a junction table match `wantedIds` for one owner record:
 // adds the missing links and removes the ones that were unticked.
-function syncLinks(table, ownerColumn, ownerId, otherColumn, wantedIds, extraColumns = {}) {
-  const currentIds = sample[table].filter((r) => r[ownerColumn] === ownerId).map((r) => r[otherColumn]);
+async function syncLinks(table, ownerColumn, ownerId, otherColumn, wantedIds, extraColumns = {}) {
+  const currentIds = data[table].filter((r) => r[ownerColumn] === ownerId).map((r) => r[otherColumn]);
   const toAdd = wantedIds.filter((id) => !currentIds.includes(id));
   const toRemove = currentIds.filter((id) => !wantedIds.includes(id));
-  addLinks(table, toAdd.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id, ...extraColumns })));
-  removeLinks(table, toRemove.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id })));
+  await addLinks(table, toAdd.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id, ...extraColumns })));
+  await removeLinks(table, toRemove.map((id) => ({ [ownerColumn]: ownerId, [otherColumn]: id })));
+}
+
+// Saves a row, then its links. These are separate requests, so if the links
+// fail we say exactly what happened (the row itself is already saved).
+async function saveWithLinks(saveRow, saveLinks) {
+  const saved = await saveRow();
+  try {
+    await saveLinks(saved);
+  } catch (error) {
+    await loadAll();
+    const partial = new Error(`Saved, but its links were not: ${error.message}`);
+    partial.saved = saved;
+    throw partial;
+  }
+  await loadAll();
+  return saved;
 }
 
 // -------------------------------------------------------------------
@@ -310,25 +338,7 @@ function sentimentCounts(projectId = null) {
   return counts;
 }
 
-// Sessions grouped by month, oldest first: [{ month: '2026-08', label: 'Aug', sessions: 4 }]
-function sessionsByMonth(projectId = null) {
-  const groups = {};
-  for (const s of data.research_session) {
-    if (projectId !== null && s.project_id !== projectId) continue;
-    const month = s.session_date.slice(0, 7);
-    groups[month] = (groups[month] || 0) + 1;
-  }
-  return Object.keys(groups).sort().map((month) => ({
-    month,
-    label: new Date(month + '-01T00:00').toLocaleString('en-GB', { month: 'short' }),
-    sessions: groups[month],
-  }));
-}
 
-// Records that nothing builds on yet (like the SQL view v_evidence_gap).
-function evidenceGaps() {
-  return allRecords().filter((r) => r.type !== 'design_decision' && downstream(r.type, r.id).length === 0);
-}
 
 // How much evidence stands behind each decision (like v_decision_strength).
 function decisionStrength() {
@@ -363,44 +373,14 @@ function participantsBySegment() {
 }
 
 // -------------------------------------------------------------------
-// The SQL views (sql/06_views.sql), for the Database page. Each one is
-// built here in JavaScript, giving the same rows the view returns in
-// PostgreSQL (the SQL tests check the views against the same data).
-// -------------------------------------------------------------------
-
-function runView(name, args = {}) {
-  if (name === 'trace_lineage') return lineage(args.type, args.id).rows;
-  if (name === 'v_dashboard') {
-    return [{
-      projects: data.research_project.length, active_projects: activeProjects().length,
-      sessions: data.research_session.length, participants: data.participant.length,
-      observations: data.observation.length, insights: data.insight.length, decisions: data.design_decision.length,
-    }];
-  }
-  if (name === 'v_project_summary') {
-    return data.research_project.map((p) => {
-      const c = projectCounts(p.id);
-      const lead = projectLead(p.id);
-      return { id: p.id, title: p.title, status: p.status, archived: !!p.archived_at, lead: lead ? lead.full_name : null,
-        sessions: c.sessions, observations: c.observation, findings: c.finding, insights: c.insight,
-        recommendations: c.recommendation, decisions: c.design_decision };
-    });
-  }
-  if (name === 'v_evidence_gap') return evidenceGaps().map((r) => ({ record_type: r.type, id: r.id, project_id: r.project_id, title: r.title }));
-  if (name === 'v_sentiment_by_project') {
-    const projectIds = [...new Set(data.observation.map((o) => o.project_id))].sort();
-    return projectIds.map((id) => ({ project_id: id, ...sentimentCounts(id) }));
-  }
-  if (name === 'v_sessions_by_month') return sessionsByMonth().map((m) => ({ month: m.month, sessions: m.sessions }));
-  if (name === 'v_participants_by_segment') return participantsBySegment();
-  if (name === 'v_source_owner') {
-    return data.source.map((s) => {
-      const owner = ownerOf(s);
-      return { id: s.id, title: s.title, kind: s.kind, attached_to: owner.type, attached_id: owner.id, pins: pinsFor(s.id).length };
-    });
-  }
-  if (name === 'v_decision_strength') return decisionStrength().map((d) => ({ id: d.id, title: d.title, status: d.status, observations: d.observations, sessions: d.sessions }));
-  throw new Error(`Unknown query ${name}`);
+// Runs one of the SQL views (sql/06_views.sql, sql/07) or the recursive
+// function trace_lineage on the database itself, for the Database page.
+async function runView(name, args = {}) {
+  const result = name === 'trace_lineage'
+    ? await client.rpc('trace_lineage', { p_type: args.type, p_id: args.id })
+    : await client.from(name).select('*');
+  if (result.error) throw friendlyError(result.error, 'run this query');
+  return result.data;
 }
 
 // -------------------------------------------------------------------
@@ -409,55 +389,52 @@ function runView(name, args = {}) {
 
 function saveProject(id, values) {
   const row = pick('research_project', values);
-  const saved = id ? updateRow('research_project', id, row) : insertRow('research_project', { status: 'planned', ...row });
-  if (values.team_ids) {
-    syncLinks('project_researcher', 'project_id', saved.id, 'researcher_id', values.team_ids, { project_role: 'researcher' });
-    syncLinks('project_method', 'project_id', saved.id, 'method_id', values.method_ids || []);
-  }
-  loadAll();
-  return saved;
+  return saveWithLinks(
+    () => (id ? updateRow('research_project', id, row) : insertRow('research_project', { status: 'planned', ...row })),
+    async (saved) => {
+      if (!values.team_ids) return;
+      await syncLinks('project_researcher', 'project_id', saved.id, 'researcher_id', values.team_ids, { project_role: 'researcher' });
+      await syncLinks('project_method', 'project_id', saved.id, 'method_id', values.method_ids || []);
+    });
 }
 
-function setArchived(projectId, archived) {
-  updateRow('research_project', projectId, { archived_at: archived ? new Date().toISOString() : null });
-  loadAll();
+async function setArchived(projectId, archived) {
+  await updateRow('research_project', projectId, { archived_at: archived ? new Date().toISOString() : null });
+  await loadAll();
 }
 
 // Saves one of the five evidence records. upIds = the records it is built on.
 function saveRecord(type, id, values, upIds) {
   const row = pick(type, values);
   if (id && type !== 'observation') delete row.project_id; // a record's project never changes
-  const saved = id ? updateRow(type, id, row) : insertRow(type, row);
   const link = STAGE[type].link;
-  if (link && upIds) {
-    syncLinks(link.table, link.self, saved.id, link.up, upIds);
-  }
-  loadAll();
-  return saved;
+  return saveWithLinks(
+    () => (id ? updateRow(type, id, row) : insertRow(type, row)),
+    async (saved) => { if (link && upIds) await syncLinks(link.table, link.self, saved.id, link.up, upIds); });
 }
 
 function saveSession(id, values) {
   const row = pick('research_session', values);
-  const saved = id ? updateRow('research_session', id, row) : insertRow('research_session', row);
-  syncLinks('session_participant', 'session_id', saved.id, 'participant_id', values.participant_ids || []);
-  syncLinks('session_question', 'session_id', saved.id, 'question_id', values.question_ids || []);
-  loadAll();
-  return saved;
+  return saveWithLinks(
+    () => (id ? updateRow('research_session', id, row) : insertRow('research_session', row)),
+    async (saved) => {
+      await syncLinks('session_participant', 'session_id', saved.id, 'participant_id', values.participant_ids || []);
+      await syncLinks('session_question', 'session_id', saved.id, 'question_id', values.question_ids || []);
+    });
 }
 
 function saveParticipant(id, values) {
   const row = pick('participant', values);
-  const saved = id ? updateRow('participant', id, row) : insertRow('participant', row);
-  syncLinks('participant_segment', 'participant_id', saved.id, 'segment_id', values.segment_ids || []);
-  loadAll();
-  return saved;
+  return saveWithLinks(
+    () => (id ? updateRow('participant', id, row) : insertRow('participant', row)),
+    (saved) => syncLinks('participant_segment', 'participant_id', saved.id, 'segment_id', values.segment_ids || []));
 }
 
 // For simple tables: researcher, research_method, segment, research_question.
-function saveSimple(table, id, values) {
+async function saveSimple(table, id, values) {
   const row = pick(table, values);
-  const saved = id ? updateRow(table, id, row) : insertRow(table, row);
-  loadAll();
+  const saved = id ? await updateRow(table, id, row) : await insertRow(table, row);
+  await loadAll();
   return saved;
 }
 
@@ -470,8 +447,7 @@ function todayDate() {
 }
 
 // The date to measure "recent" from: the latest day with research activity
-// (not in the future). With the sample study that's in September 2026;
-// as soon as you add something, it becomes today.
+// (not in the future), so a quiet week doesn't make everything read "0".
 function researchToday() {
   const today = todayDate().getTime();
   let latest = 0;
@@ -568,37 +544,62 @@ function projectOfSource(source) {
 }
 
 
+// The address of a stored photo. A source keeps the file's name in the
+// "sources" bucket (older rows may hold a full address).
+function sourceUrl(source) {
+  if (/^(https?:|data:)/.test(source.file_url)) return source.file_url;
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(source.file_url)}`;
+}
+
+// Uploads a photo (a Blob) to Storage and returns the name it was stored under.
+async function uploadPhoto(blob, title) {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'photo';
+  const name = `${Date.now()}-${slug}.jpg`;
+  const result = await client.storage.from(BUCKET).upload(name, blob, { contentType: 'image/jpeg' });
+  if (result.error) throw friendlyError(result.error, 'upload the photo');
+  return name;
+}
+
+// Removes photos from Storage. A failure here isn't fatal: the rows are
+// already gone, and a leftover file can be deleted in the Supabase dashboard.
+async function removeFiles(names) {
+  const stored = names.filter((name) => name && !/^(https?:|data:)/.test(name));
+  if (stored.length) await client.storage.from(BUCKET).remove(stored);
+}
+
 // Attaches a new source (or updates one). `attach` is "type:id", e.g. "finding:3".
-function saveSource(id, values) {
+async function saveSource(id, values) {
   const row = pick('source', values);
   if (values.attach) {
     const [type, ownerId] = values.attach.split(':');
     for (const column of Object.values(OWNER_COLUMN)) row[column] = null;
     row[OWNER_COLUMN[type]] = Number(ownerId);
   }
-  const saved = id ? updateRow('source', id, row) : insertRow('source', { kind: 'photo', is_illustration: false, ...row });
-  loadAll();
-  if (!saveSample()) throw Object.assign(new Error('Your browser storage is full, so this photo will disappear when you reload. Try a smaller image.'), { saved });
+  const saved = id ? await updateRow('source', id, row) : await insertRow('source', { kind: 'photo', is_illustration: false, ...row });
+  await loadAll();
   return saved;
 }
 
-function saveNote(type, ownerId, values) {
+async function saveNote(type, ownerId, values) {
   const row = pick('note', values);
   row[OWNER_COLUMN[type]] = ownerId;
-  const saved = insertRow('note', row);
-  loadAll();
+  const saved = await insertRow('note', row);
+  await loadAll();
   return saved;
 }
 
-function savePin(sourceId, values) {
-  const saved = insertRow('annotation', { source_id: sourceId, ...pick('annotation', values) });
-  loadAll();
+async function savePin(sourceId, values) {
+  const saved = await insertRow('annotation', { source_id: sourceId, ...pick('annotation', values) });
+  await loadAll();
   return saved;
 }
 
-// Notes and pins can be deleted (like DELETE ... WHERE id = ...).
-function deleteRow(table, id) {
-  sample[table] = sample[table].filter((r) => r.id !== id);
-  saveSample();
-  loadAll();
+// Deletes one row: a project, session, record, source, note, pin, participant...
+// The database refuses, with a clear message, if other records still depend
+// on it. Photos attached to what is deleted are removed from Storage too.
+async function deleteRecord(table, id) {
+  const files = table === 'source' ? [byId('source', id).file_url] : OWNER_COLUMN[table] ? sourcesFor(table, id).map((s) => s.file_url) : [];
+  await deleteById(table, id);
+  await removeFiles(files);
+  await loadAll();
 }

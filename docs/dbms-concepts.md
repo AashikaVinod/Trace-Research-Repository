@@ -36,7 +36,7 @@ Suggested demo order (about 10 minutes): Home → Projects → New project (cons
 | **BEFORE UPDATE trigger** | `trace_touch_updated_at` keeps `updated_at` current | Edit a record; "Last updated" changes |
 | **Validation trigger** | `trace_check_same_project`: links can't cross projects | Linking options only show records from the same project; the database enforces it too |
 | **Business-rule trigger** | `trace_block_archived_project`: archived projects accept no new work | Archive a project: the add buttons disappear, and the database refuses inserts |
-| **Stored function** | `trace_lineage(type, id)`, `trace_is_editor()` | Database page → Query lab → lineage |
+| **Stored function** | `trace_lineage(type, id)` | Database page → Query lab → lineage |
 
 ## 4. Queries
 
@@ -78,13 +78,16 @@ Suggested demo order (about 10 minutes): Home → Projects → New project (cons
 | **Sequences / identity** | `setval(...)` after loading seed data with fixed ids | Why new rows don't clash with seeded ids |
 | **Indexes** | Indexes on foreign keys and dates (`sql/02`) | Keep JOINs and "recent" lists fast as data grows |
 
-## 7. Security
+## 7. Security and deleting
+
+TRACE is single-user with no login, so the security model is deliberately simple. Say that out loud in the presentation, then show how it would be tightened.
 
 | Concept | Where | What to show |
 | --- | --- | --- |
-| **Roles** | `anon` (visitors) and `authenticated` (signed in) | Explain with `sql/03_security.sql` (the browser demo has no sign-in) |
-| **GRANT / REVOKE** | `03_security.sql` revokes everything, then grants exactly what's needed | Nobody can DELETE projects through the API |
-| **Row Level Security (RLS)** | Policies on every table, e.g. "editors can insert" | Show the policies in `sql/03_security.sql` and the SQL tests that prove them |
-| **Security definer function** | `trace_is_editor()` reads a table that's otherwise hidden | The editor list itself can't be read |
+| **Roles** | `anon` is the role behind the public key the app uses; `authenticated` is for signed-in users | `sql/03_security.sql`: with no login, `anon` gets full access |
+| **GRANT / REVOKE** | `03_security.sql` revokes everything from `anon` and `authenticated`, then grants exactly what is needed | The grants list in the file |
+| **Row Level Security (RLS)** | RLS is on for every table, with one "open access" policy each. A table with RLS on and no policy would be closed | Replace `using (true)` with a user check to lock it down later |
 | **security_invoker views** | Views run with the caller's permissions, so RLS still applies | `sql/06_views.sql` header |
-| **Principle of least privilege** | Visitors can SELECT, editors INSERT/UPDATE, nobody DELETEs entities | Security table in the README |
+| **ON DELETE RESTRICT vs CASCADE** | Junction links, notes, pins and photo rows cascade; sessions, projects, researchers and questions restrict | Try deleting a session that has observations: the database refuses and the app says why. Delete a finding: only its links go, never the observations |
+| **Storage policies** | `sql/09_storage.sql`: the public bucket `sources`, and policies on `storage.objects` limited to that bucket | Storage → sources in the dashboard |
+| **Single point of risk** | The public key can edit and delete everything | The Safety section of SETUP.md |

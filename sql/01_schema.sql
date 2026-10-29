@@ -24,8 +24,7 @@ begin
        'participant_segment', 'research_question', 'research_session',
        'session_participant', 'session_question', 'observation', 'finding',
        'insight', 'recommendation', 'design_decision', 'observation_finding',
-       'finding_insight', 'insight_recommendation', 'recommendation_decision',
-       'trace_editor'
+       'finding_insight', 'insight_recommendation', 'recommendation_decision'
      );
   if existing is not null then
     raise exception 'TRACE tables already exist: %. Nothing was changed. Inspect them before re-installing (see sql/99_uninstall_trace.sql).', existing;

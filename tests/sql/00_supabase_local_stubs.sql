@@ -1,6 +1,7 @@
 -- LOCAL TESTING ONLY. Never run this in Supabase.
--- Recreates the small parts of a Supabase database that TRACE relies on,
--- so the real sql/ files can be validated against plain PostgreSQL.
+-- Recreates the small parts of a Supabase database that TRACE relies on
+-- (the anon and authenticated roles, and the storage tables), so the real
+-- sql/ files can be validated against plain PostgreSQL.
 -- Roles are cluster-wide, so only create them once.
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin noinherit; end if;
@@ -11,18 +12,15 @@ do $$ begin
 end $$;
 grant anon, authenticated to authenticator;
 
-create schema auth;
-grant usage on schema auth to anon, authenticated;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text unique);
--- Mirrors Supabase's auth.uid(): the "sub" claim of the request JWT.
-create function auth.uid() returns uuid language sql stable as $$
-  select nullif(coalesce(current_setting('request.jwt.claim.sub', true),
-                         nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'), '')::uuid
-$$;
-grant execute on function auth.uid() to anon, authenticated;
+create schema storage;
+grant usage on schema storage to anon, authenticated;
+create table storage.buckets (id text primary key, name text not null, public boolean default false);
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text);
+alter table storage.objects enable row level security;
+grant all on storage.objects to anon, authenticated;
 
 -- Supabase grants broad default privileges on public; emulate them so the
--- tests prove 03_security.sql narrows access deliberately.
+-- tests prove 03_security.sql sets access deliberately.
 grant usage on schema public to anon, authenticated;
 alter default privileges in schema public grant all on tables to anon, authenticated;
 alter default privileges in schema public grant all on functions to anon, authenticated;

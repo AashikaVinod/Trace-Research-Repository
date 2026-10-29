@@ -108,7 +108,7 @@ function pageDatabase() {
     <header class="page-head">
       <div><h1>Database</h1>
         <p>TRACE's database is designed for PostgreSQL: 15 entity tables (including sources, notes and pins), 9 junction tables, 10 views, a recursive function, 5 trigger functions and Row Level Security, all in the <code>sql/</code> folder.
-        In this demo the app runs in your browser, so each query below is computed with the same logic as its SQL view.</p></div>
+        The queries below run live on your Supabase database.</p></div>
     </header>
 
     <div class="stats" aria-label="Database size">
@@ -149,14 +149,14 @@ function pageDatabase() {
     </section>`;
 
   $$('[data-run]').forEach((button) => {
-    button.onclick = () => {
+    button.onclick = async () => {
       const query = QUERIES[Number(button.dataset.run)];
       const box = $(`#result-${button.dataset.run}`);
       button.disabled = true;
       box.innerHTML = '<p class="quiet">Running…</p>';
       try {
-        const rows = runView(query.view, query.args);
-        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows, the same result <code>${query.view}</code> gives in PostgreSQL.</p>`;
+        const rows = await runView(query.view, query.args);
+        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows, run live on your Supabase database from <code>${query.view}</code>.</p>`;
       } catch (error) {
         box.innerHTML = `<p class="error">${esc(error.message)}</p>`;
       }
