@@ -1,6 +1,74 @@
 /* ================================================================
+   TRACE brand + design tokens
+   Every colour, size and radius in the app comes from this file.
+   The full brand guide is in docs/brand.md.
+   ================================================================ */
+@font-face { font-family: 'Bricolage Grotesque'; src: url('../assets/fonts/bricolage-grotesque-latin-wght.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('../assets/fonts/onest-latin-wght.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+
+:root {
+  /* ---- Core brand colours ---- */
+  --ink: #15161c;          /* Trace Ink: text, primary buttons, the "decision" colour */
+  --paper: #f7f6f2;        /* Trace Paper: the app window */
+  --white: #ffffff;
+  --glass: rgba(248, 247, 243, 0.9);      /* the app window: slightly see-through glass */
+  --card: rgba(255, 255, 255, 0.92);      /* cards sit on the glass */
+  --card-line: rgba(21, 22, 28, 0.07);
+  --green: #1f5a45;        /* Trace Green: links, focus, active states */
+  --green-soft: #e3eee8;
+
+  /* ---- Evidence spectrum (one colour per stage, also used in the logo) ---- */
+  /* fill = shapes and bars, text = readable text on the tint, soft = the tint */
+  --obs: #7c6cf0;  --obs-text: #5546c2;  --obs-soft: #efedfd;   /* 1 Observation    violet */
+  --find: #2f7fd8; --find-text: #1f5f9e; --find-soft: #e6f0fb;  /* 2 Finding        blue   */
+  --ins: #17a173;  --ins-text: #0f7353;  --ins-soft: #e2f4ec;   /* 3 Insight        green  */
+  --rec: #ef7d3c;  --rec-text: #9c4612;  --rec-soft: #fdede2;   /* 4 Recommendation orange */
+  --dec: #15161c;  --dec-text: #15161c;  --dec-soft: #e9e9ec;   /* 5 Decision       ink    */
+
+  /* ---- Neutrals ---- */
+  --ink-2: #4f535c;        /* secondary text */
+  --ink-3: #575b64;        /* quiet text (passes WCAG AA on white and on the moving glass) */
+  --line: #e7e5df;
+  --line-strong: #d4d2ca;
+  --hover: #f0efea;
+
+  /* ---- Feedback ---- */
+  --danger: #b4362a;
+  --warn: #9c4612;
+
+  /* ---- Type ---- */
+  --font: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;          /* everything you read */
+  --display: 'Bricolage Grotesque', 'Onest', ui-sans-serif, system-ui, sans-serif;            /* headings and big numbers */
+  --serif: var(--font); /* kept so older rules still work; TRACE no longer uses a serif */
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ---- Space (8-point scale) ---- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
+
+  /* ---- Shape and depth ---- */
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --shadow: 0 1px 2px rgba(21, 22, 28, 0.05);
+  --shadow-hover: 0 1px 2px rgba(21, 22, 28, 0.05), 0 8px 20px -12px rgba(21, 22, 28, 0.22);
+  --shadow-window: 0 40px 90px -40px rgba(21, 22, 28, 0.5), 0 0 0 1px rgba(21, 22, 28, 0.06);
+
+  /* ---- Layout ---- */
+  --frame: 56px;           /* the marble border around the app window: change this to resize it */
+  --sidebar: 252px;
+}
+
+/* Each stage sets --c (fill), --c-text (text) and --c-soft (tint) for its children. */
+.stage-observation     { --c: var(--obs);  --c-text: var(--obs-text);  --c-soft: var(--obs-soft); }
+.stage-finding         { --c: var(--find); --c-text: var(--find-text); --c-soft: var(--find-soft); }
+.stage-insight         { --c: var(--ins);  --c-text: var(--ins-text);  --c-soft: var(--ins-soft); }
+.stage-recommendation  { --c: var(--rec);  --c-text: var(--rec-text);  --c-soft: var(--rec-soft); }
+.stage-design_decision { --c: var(--dec);  --c-text: var(--dec-text);  --c-soft: var(--dec-soft); }
+
+/* ================================================================
    TRACE styles
-   1 Base          2 Animated marble backdrop   3 App shell
+   1 Base          2 Liquid background   3 App shell
    4 Buttons/tags  5 Cards and layout           6 Charts
    7 Home          8 Projects                   9 Library
    10 Record       11 Evidence trail            12 Tables
@@ -44,7 +112,7 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
 #liquid { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease; }
 #liquid.ready { opacity: 1; }
 
-/* ---------- 3 App shell: one window on the marble ---------- */
+/* ---------- 3 App shell: one window over the liquid background ---------- */
 .app {
   display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr);
   width: calc(100% - 2 * var(--frame)); max-width: 1600px; min-height: calc(100vh - 2 * var(--frame));
@@ -402,7 +470,6 @@ a.is-featured:hover .round-link { background: #fff; color: var(--green); border-
 .pin-form { display: grid; gap: var(--s2); padding: var(--s3); border-radius: var(--r-md); background: var(--green-soft); }
 .viewer-actions { padding-top: var(--s3); border-top: 1px solid var(--line); }
 
-/* Flows and the journey */
 
 /* Folders on the Sources page (Files reference) */
 .folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: var(--s4); }
@@ -528,7 +595,6 @@ a.is-featured:hover .round-link { background: #fff; color: var(--green); border-
 .query-result { margin-top: var(--s3); max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
 .query-source { margin-top: var(--s2); font-size: 12.5px; color: var(--ink-3); }
 
-/* ---------- 14 Ask TRACE panel ---------- */
 .answer { display: grid; gap: var(--s3); padding-top: var(--s4); border-top: 1px solid var(--ink); font-size: 14.5px; line-height: 1.55; }
 
 /* ---------- 15 Forms and modals ---------- */
@@ -656,7 +722,6 @@ select.input { appearance: none; padding-right: 36px; background: #fff url("data
 }
 @media (max-width: 380px) {
   .main { padding: var(--s2) var(--s3) var(--s5); }
-  .topbar #ask-btn { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

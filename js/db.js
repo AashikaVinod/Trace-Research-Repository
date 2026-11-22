@@ -9,6 +9,20 @@
 //
 // Photos live in the Supabase Storage bucket "sources"; a source row keeps
 // the file's name. Nothing is stored in the browser.
+//
+// What is where, in order:
+//   constants     TABLES, STAGES (the five steps), COLUMNS, OWNER_COLUMN
+//   connecting    configProblem, startDatabase (or demo mode, js/demo.js), loadAll
+//   errors        friendlyError (database errors become plain sentences)
+//   writes        insertRow, updateRow, deleteById, addLinks, removeLinks,
+//                 syncLinks, saveWithLinks
+//   readers       byId, upstream, downstream, lineage, counts and rankings
+//   query lab     runView (runs the real SQL views for the Database page)
+//   saving        saveProject, saveRecord, saveSession, saveParticipant,
+//                 saveSimple, setArchived
+//   statistics    countsByMonth, evidenceInUsePercent, nextSession
+//   photos        sourceUrl, uploadPhoto, saveSource, saveNote, savePin,
+//                 deleteRecord
 // ===================================================================
 
 let data = {};     // every table, e.g. data.research_project is a list of rows
@@ -76,11 +90,11 @@ function pick(table, values) {
 // Connecting to Supabase
 // -------------------------------------------------------------------
 
-// Returns a message if js/config.js is empty or wrong, otherwise null.
+// Returns a message if config.js is empty or wrong, otherwise null.
 function configProblem() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return 'js/config.js is empty. Paste your Supabase project URL and publishable key into it (SETUP.md, step 4).';
+  if (!SUPABASE_URL || !SUPABASE_KEY) return 'config.js is empty. Paste your Supabase project URL and publishable key into it (see the README).';
   if (!SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.startsWith('http://localhost')) return 'SUPABASE_URL must start with https://';
-  if (SUPABASE_KEY.startsWith('sb_secret_')) return 'That is a SECRET key. Remove it from js/config.js, reset it in Supabase, and use the publishable key.';
+  if (SUPABASE_KEY.startsWith('sb_secret_')) return 'That is a SECRET key. Remove it from config.js, reset it in Supabase, and use the publishable key.';
   if (SUPABASE_KEY.split('.').length === 3) {
     try {
       const payload = JSON.parse(atob(SUPABASE_KEY.split('.')[1].replaceAll('-', '+').replaceAll('_', '/')));
@@ -93,6 +107,12 @@ function configProblem() {
 }
 
 async function startDatabase() {
+  // Demo mode (js/demo.js): config.js is empty, so run on the built-in sample study.
+  if (DEMO) {
+    client = createDemoClient();
+    await loadAll();
+    return;
+  }
   const problem = configProblem();
   if (problem) {
     const error = new Error(problem);
@@ -139,9 +159,9 @@ function friendlyError(error, action) {
   if (/failed to fetch|networkerror|load failed/i.test(text)) {
     message = `Couldn't reach Supabase to ${action}. Check your connection and try again.`;
   } else if (/bucket not found/i.test(text)) {
-    message = 'The photo bucket "sources" was not found. Run sql/09_storage.sql in Supabase (or sql/install_all.sql).';
+    message = 'The photo bucket "sources" was not found. Run install.sql (from the supabase-setup folder) in the Supabase SQL Editor.';
   } else if (code === '42501' || /row-level security|permission denied/i.test(text)) {
-    message = `Supabase refused to ${action}. Check that the SQL files were run (SETUP.md, step 2) and that js/config.js has your publishable key.`;
+    message = `Supabase refused to ${action}. Check that install.sql was run in Supabase and that config.js has your publishable key.`;
   } else if (code === '23505') { // UNIQUE constraint
     if (text.includes('participant_code')) field = 'participant_code';
     else if (text.includes('email')) field = 'email';
@@ -156,7 +176,7 @@ function friendlyError(error, action) {
   } else if (code === '23503') { // FOREIGN KEY on insert
     message = 'This refers to a record that no longer exists. Reload the page and try again.';
   } else if (code === 'PGRST205' || code === '42P01') {
-    message = 'The TRACE tables were not found. Run sql/install_all.sql in the Supabase SQL Editor (SETUP.md, step 2).';
+    message = 'The TRACE tables were not found. Run install.sql (from the supabase-setup folder) in the Supabase SQL Editor.';
   } else if (code === '23514' && text.includes('violates check constraint')) { // CHECK constraint
     message = 'One of the values is not allowed. Check the form and try again.';
   }
@@ -327,7 +347,7 @@ function projectLead(projectId) {
   return link ? byId('researcher', link.researcher_id) : null;
 }
 
-// ----- Statistics (used by charts, the assistant and the Database page) -----
+// ----- Statistics (used by the dashboard, the trail and the Database page) -----
 
 // Observation sentiment, for one project or all of them.
 function sentimentCounts(projectId = null) {
@@ -553,6 +573,7 @@ function sourceUrl(source) {
 
 // Uploads a photo (a Blob) to Storage and returns the name it was stored under.
 async function uploadPhoto(blob, title) {
+  if (DEMO) return demoReadBlob(blob); // demo photos stay in memory
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'photo';
   const name = `${Date.now()}-${slug}.jpg`;
   const result = await client.storage.from(BUCKET).upload(name, blob, { contentType: 'image/jpeg' });

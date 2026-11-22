@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACE self-check</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .check-list { display: grid; gap: 10px; max-width: 820px; margin-top: 20px; }
+    .check { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--card-line); }
+    .check b { font-size: 13px; letter-spacing: .02em; }
+    .check.pass b { color: var(--ins-text); }
+    .check.fail b { color: var(--danger); }
+    .check.warn b { color: var(--rec-text); }
+    .check small { display: block; color: var(--ink-3); font-size: 13px; margin-top: 4px; word-break: break-word; }
+    .summary { margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <main id="view" style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
+    <h1>TRACE self-check</h1>
+    <p class="muted">Runs real checks against your database and photo storage from this browser. It writes one test note and deletes it again. Nothing else is changed.</p>
+    <div id="results" class="check-list"><div class="check"><b>…</b><span>Running checks</span></div></div>
+    <p id="summary" class="summary"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/check.js"></script>
+</body>
+</html>

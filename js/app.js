@@ -79,6 +79,12 @@ function render() {
 // -------------------------------------------------------------------
 
 function renderShell() {
+  if (DEMO) {
+    $('#mode-card').innerHTML = `
+      <strong><span class="mode-dot sample"></span>Demo data</strong>
+      <p>A sample study to explore. Changes last until you reload.</p>`;
+    return;
+  }
   $('#mode-card').innerHTML = `
     <strong><span class="mode-dot live"></span>Supabase</strong>
     <p>Everything you add is saved to your database.</p>`;

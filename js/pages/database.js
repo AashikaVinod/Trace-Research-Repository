@@ -54,14 +54,14 @@ const CONCEPT_MAP = [
   ['Team, segments, participants in sessions', 'Many-to-many junction tables, composite primary keys', '9 junction tables'],
   ['Observation belongs to a session', 'Foreign key (one-to-many), 3NF', 'no project_id on observation'],
   ['Linking evidence', 'Junction table + trigger (same-project rule)', 'trace_check_same_project'],
-  ['Evidence trail', 'Recursive CTE, UNION ALL, view', 'trace_lineage, v_evidence_edge'],
+  ['Evidence trail', 'Recursive CTE, UNION ALL, view (the page walks the same graph in JavaScript; the query lab runs the SQL)', 'trace_lineage, v_evidence_edge'],
   ['Gaps to close', 'Anti-join (NOT EXISTS)', 'v_evidence_gap'],
   ['Strongest decisions', 'Multi-table JOIN, COUNT(DISTINCT)', 'v_decision_strength'],
   ['Charts', 'GROUP BY, FILTER, date_trunc', 'v_sentiment_by_project, v_sessions_by_month'],
   ['Library search and tabs', 'WHERE, ILIKE, indexes', 'v_evidence_record'],
   ['"Last updated" dates', 'BEFORE UPDATE trigger', 'trace_touch_updated_at'],
-  ['Who may edit (designed in SQL)', 'Roles, GRANT, Row Level Security, security definer function', 'sql/03_security.sql'],
-  ['Installing the database', 'Transactions (BEGIN / COMMIT), sequences', 'sql/01–04'],
+  ['Who may read and write', 'Roles, GRANT, Row Level Security (one open-access policy per table)', 'sql/03_security.sql'],
+  ['Installing the database', 'Transactions (BEGIN / COMMIT), sequences', 'install.sql (files 01 to 09)'],
   ['Sources on any step', 'Exclusive arc: one FK per owner + CHECK num_nonnulls(...) = 1', 'source_one_parent in sql/07'],
   ['Pinned notes on images', 'Weak entity, ON DELETE CASCADE', 'annotation in sql/07'],
   ['Who wrote a note', 'Foreign key to researcher, ON DELETE RESTRICT', 'note.author_id'],
@@ -108,11 +108,11 @@ function pageDatabase() {
     <header class="page-head">
       <div><h1>Database</h1>
         <p>TRACE's database is designed for PostgreSQL: 15 entity tables (including sources, notes and pins), 9 junction tables, 10 views, a recursive function, 5 trigger functions and Row Level Security, all in the <code>sql/</code> folder.
-        The queries below run live on your Supabase database.</p></div>
+        ${DEMO ? 'In demo mode the queries below run on the sample study in your browser.' : 'The queries below run live on your Supabase database.'}</p></div>
     </header>
 
     <div class="stats" aria-label="Database size">
-      ${statLink('#/database', 'Tables', TABLES.length + 1, `${TABLES.length} data tables + 1 editor list`)}
+      ${statLink('#/database', 'Tables', TABLES.length, 'Entity, junction and attachment tables')}
       ${statLink('#/database', 'Rows stored', totalRows, 'Across all tables')}
       ${statLink('#/database', 'Junction tables', JUNCTIONS.length, 'For many-to-many links')}
       ${statLink('#/database', 'Views', 10, 'Plus 1 recursive function')}
@@ -156,7 +156,7 @@ function pageDatabase() {
       box.innerHTML = '<p class="quiet">Running…</p>';
       try {
         const rows = await runView(query.view, query.args);
-        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows, run live on your Supabase database from <code>${query.view}</code>.</p>`;
+        box.innerHTML = resultTable(rows) + `<p class="query-source">${rows.length} rows, ${DEMO ? 'worked out from the sample study, like' : 'run live on your Supabase database from'} <code>${query.view}</code>.</p>`;
       } catch (error) {
         box.innerHTML = `<p class="error">${esc(error.message)}</p>`;
       }

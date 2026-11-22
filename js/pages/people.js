@@ -21,7 +21,7 @@ function pagePeople() {
     const segments = segmentsOf(p);
     const sessions = sessionsOf(p);
     rows += `<tr>
-      <td><strong>${esc(p.participant_code)}</strong></td>
+      <td class="nowrap"><strong>${esc(p.participant_code)}</strong></td>
       <td>${esc(p.age_band || '—')}</td>
       <td><div class="pills">${segments.map((g) => pill(g.name, 'purple')).join('') || '<span class="quiet">—</span>'}</div></td>
       <td>${sessions ? `<a class="strong-link" href="#/sessions?participant=${p.id}">${sessions}</a>` : '0'}</td>

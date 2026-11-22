@@ -118,11 +118,10 @@ function statCard(href, label, value, recent, months) {
 function projectProgressRow(project) {
   const counts = projectCounts(project.id);
   const team = data.project_researcher.filter((l) => l.project_id === project.id).map((l) => byId('researcher', l.researcher_id));
-  const segments = STAGES.map((s) => ({ value: counts[s.type], color: `var(--${['obs', 'find', 'ins', 'rec', 'dec'][s.step - 1]})`, label: s.plural }));
   return `<li><a href="#/projects/${project.id}">
     <span class="progress-name"><strong>${esc(project.title)}</strong><small>${plural(counts.sessions, 'session')}</small></span>
     <span class="avatars">${team.map((r) => avatar(r.full_name, 26)).join('')}</span>
-    <span class="progress-bar">${segmentBar(segments)}</span>
+    <span class="progress-bar">${evidenceBar(project.id)}</span>
   </a></li>`;
 }
 
