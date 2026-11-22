@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACE · UX research repository</title>
+  <meta name="description" content="TRACE connects UX research observations to the design decisions they support.">
+  <meta name="theme-color" content="#f7f6f2">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip" href="#view">Skip to content</a>
+
+  <!-- The moving liquid behind the app (decoration only, drawn by js/background.js) -->
+  <div class="backdrop" aria-hidden="true"><canvas id="liquid"></canvas></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#/" aria-label="TRACE home">
+        <img src="assets/logo-mark.svg" width="30" height="30" alt="">
+        <span class="wordmark">trace</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#/" data-nav="/">Dashboard</a>
+        <p class="nav-label">Research</p>
+        <a href="#/projects" data-nav="/projects">Projects</a>
+        <a href="#/sessions" data-nav="/sessions">Sessions</a>
+        <a href="#/people" data-nav="/people">People</a>
+        <p class="nav-label">Evidence</p>
+        <a href="#/library" data-nav="/library">Research library</a>
+        <a href="#/trail" data-nav="/trail">Evidence trail</a>
+        <a href="#/sources" data-nav="/sources">Sources</a>
+        <p class="nav-label">Under the hood</p>
+        <a href="#/database" data-nav="/database">Database</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="mode-card" id="mode-card"></div>
+        <div class="tools">
+          <button class="motion-btn" id="motion-btn" type="button"></button>
+        </div>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar"></button>
+        <a class="mobile-logo" href="#/" aria-label="TRACE home"><img src="assets/logo-mark.svg" width="28" height="28" alt=""></a>
+        <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
+        <form class="search" id="search" role="search">
+          <span id="search-icon"></span>
+          <label class="sr" for="search-input">Search research</label>
+          <input id="search-input" type="search" placeholder="Search research">
+          <kbd>/</kbd>
+        </form>
+        <button class="btn btn-dark" id="new-btn" type="button"></button>
+      </header>
+      <main class="view" id="view" tabindex="-1">
+        <div class="loading"><img src="assets/logo-mark.svg" width="48" height="48" alt=""><p>Loading TRACE…</p></div>
+      </main>
+    </div>
+  </div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- Plain scripts (no modules), so the app also opens straight from a file. -->
+  <script src="js/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/pages/home.js"></script>
+  <script src="js/pages/projects.js"></script>
+  <script src="js/pages/library.js"></script>
+  <script src="js/pages/trail.js"></script>
+  <script src="js/pages/sessions.js"></script>
+  <script src="js/pages/people.js"></script>
+  <script src="js/pages/database.js"></script>
+  <script src="js/pages/sources.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/background.js"></script>
+</body>
+</html>
